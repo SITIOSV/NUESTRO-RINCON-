@@ -1,0 +1,1 @@
+Pon aquí tus fotos (foto1.jpg, foto2.png...) y escribe sus nombres en FOTOS_ARCHIVOS dentro de index.html. Comprímelas a ~1600 px de ancho.
