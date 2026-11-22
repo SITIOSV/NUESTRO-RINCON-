@@ -10,7 +10,7 @@
   const FOTOS_DIR = 'fotos/';
   const FOTOS_ARCHIVOS = ``;   // ej.: foto1.jpg, foto2.png, foto3.jpg
   const HOME_ORDER = ['cartas', 'fechas', 'juntos', 'aniversarios'];   // orden de importancia en Inicio
-  const URL_API = 'https://script.google.com/macros/s/AKfycbx6-ZERKdkwu50VW3_aYZzVDdjUjRBsnnIatOLu_mQiv6kbnvOVTjG_pKoSylcf6jUa_g/exec';
+  const URL_API = 'https://script.google.com/macros/s/AKfycbzim9NIUvePX36k1ejl9iBMWE8pl_A9PJi4XyF6OlsGNWv8XNpnMDrqFRkb0utQ9dxhPg/exec';
   const TZ_OFF = -6 * 3600 * 1000;      // America/El_Salvador (sin horario de verano)
   const LS = 'hub_v1';
   const HOME_AVISO_DIAS = 3;   // en Inicio, fechas y aniversarios aparecen solo cuando faltan hasta N días (y el propio día)

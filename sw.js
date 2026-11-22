@@ -1,7 +1,7 @@
 /* Service worker: solo guarda archivos propios del sitio (páginas, estilos, íconos, fotos).
    NUNCA toca peticiones a otros dominios (Apps Script): el estado STOP SITE, las cartas
    y los datos siempre vienen frescos del servidor. */
-const CACHE = 'rincon-v6';
+const CACHE = 'rincon-v7';
 const SHELL = ['./', 'index.html', 'regalo.html', 'lugares.html', 'fotos.html', 'fechas.html', 'cartas.html', 'linea.html', 'favoritos.html', 'pendientes.html', 'hub.css', 'hub.js', 'busy.js', 'intro.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
