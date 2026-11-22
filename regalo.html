@@ -28,13 +28,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Great+Vibes&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
 
+<script src="busy.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
 <style>
   :root {
-    --wine-red: #3aaef2;
+    --wine-red: #5a1030;
     --ink: #24140a;
     --title-ink: #8a0c2b;
     --paper-brown: #7a4a1e;
@@ -2986,7 +2987,7 @@
      No es un secreto: la seguridad la da la clave que valida el servidor.
      Si queda vacía, el 12/12 permanece BLOQUEADO (falla de forma segura).
   --------------------------------------------------------------------- */
-  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwDdST08YrEDi9v-MI2JzdmCfSmZkW1hSMTArJyYjJ9fyXrQdxnqXBRdyNT5aiJ2rfcWA/exec';
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx6-ZERKdkwu50VW3_aYZzVDdjUjRBsnnIatOLu_mQiv6kbnvOVTjG_pKoSylcf6jUa_g/exec';
 
   const POLL_MS = 12000;        // consulta mientras el 12 sigue bloqueado
   const POLL_MAX_MS = 60000;    // tope del retroceso cuando no hay conexión
@@ -3276,7 +3277,7 @@
     const clave = $('sb-key').value; if (!clave) return;
     sbBusy = true; $('sb-err').textContent = 'Enviando…';
     try {
-      const j = await api('POST', null, (sbMode === 'start' && S.sbReason === 'pagina') ? { action: 'bloqueo_set', alcance: 'pagina', pagina: 'regalo', bloquear: false, clave } : { action: sbMode === 'start' ? 'start_site' : 'stop_site', clave });
+      const j = await (window.HBusy ? HBusy.run('Aplicando el cambio…', () => api('POST', null, (sbMode === 'start' && S.sbReason === 'pagina') ? { action: 'bloqueo_set', alcance: 'pagina', pagina: 'regalo', bloquear: false, clave } : { action: sbMode === 'start' ? 'start_site' : 'stop_site', clave })) : api('POST', null, (sbMode === 'start' && S.sbReason === 'pagina') ? { action: 'bloqueo_set', alcance: 'pagina', pagina: 'regalo', bloquear: false, clave } : { action: sbMode === 'start' ? 'start_site' : 'stop_site', clave }));
       if (j && j.ok === true) { setSiteBlock(blk(j)); sbClose(); if (!j.sitio_bloqueado) toast('Sitio reactivado'); else toast('Orden enviada a la Nube.'); }
       else $('sb-err').textContent = (j && ERR_TXT[j.error]) || 'No se pudo completar.';
     } catch (err) { $('sb-err').textContent = 'Sin conexión. No se cambió nada.'; }
@@ -3360,7 +3361,7 @@
     note.textContent = 'Enviando…';
     const action = pendingAction;
     try {
-      const j = await api('POST', null, { action, clave });
+      const j = await (window.HBusy ? HBusy.run('Aplicando el cambio…', () => api('POST', null, { action, clave })) : api('POST', null, { action, clave }));
       input.value = '';
       if (j && j.ok === true && typeof j.habilitado_12 === 'boolean') {
         closeConfirm();

@@ -1,6 +1,6 @@
 /* Nuestro rincón · estilos compartidos de todas las páginas */
 :root {
-    --wine-red: #3aaef2;
+    --wine-red: #5a1030;
     --ink: #24140a;
     --title-ink: #8a0c2b;
     --paper-brown: #7a4a1e;
@@ -152,3 +152,12 @@ body.hb-admin .hb-adm { display: inline-flex !important; } .hb-adm { display: no
 #sb-pass .row { display: flex; gap: 8px; } #sb-pass .row button { flex: 1; padding: 10px; border-radius: 8px; border: 0; font-weight: 700; cursor: pointer; }
 #sb-ok { background: #d11a1a; color: #fff; } #sb-no { background: #ddd; }
 #sb-err { min-height: 1.2em; font-size: 13px; color: #b00; }
+
+/* ---- Administrador de correos ---- */
+#hb-modal .mc-p { display: flex; flex-direction: column; gap: .45rem; background: rgba(255,255,255,.05); border: 1px solid rgba(212,175,55,.22); border-radius: 12px; padding: .7rem; }
+#hb-modal .mc-h { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; font-size: .88rem; }
+#hb-modal .mc-chip { font-size: .68rem; padding: .15rem .55rem; border-radius: 999px; background: rgba(255,255,255,.08); }
+#hb-modal .mc-chip.ok { background: rgba(120,200,130,.22); color: #b8f0be; } #hb-modal .mc-chip.no { background: rgba(255,170,90,.2); color: #ffd2a0; }
+#hb-modal .mc-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; font-size: .82rem; }
+#hb-modal .mc-l small { display: block; color: rgba(255,245,233,.65); font-size: .72rem; }
+#hb-modal button:disabled { opacity: .45; cursor: not-allowed; }

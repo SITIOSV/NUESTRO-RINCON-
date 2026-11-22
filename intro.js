@@ -106,7 +106,7 @@
     }
 
     // --- recorrido de la cámara ---
-    const dur = 10500;
+    const dur = 7500;
 
     const count = tIdx;                                    // días desde el 11/11 hasta antes de hoy
     const startAt = 1100, span = dur * 0.56 - startAt;     // ventana donde ocurren los clips

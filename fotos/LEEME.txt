@@ -1,1 +1,10 @@
-Pon aquí tus fotos (foto1.jpg, foto2.png...) y escribe sus nombres en FOTOS_ARCHIVOS dentro de index.html. Comprímelas a ~1600 px de ancho.
+FOTOS DE NUESTRO RINCON
+=======================
+1. Copia aqui tus fotos (.jpg, .jpeg, .png, .webp). Conviene comprimirlas a ~1600 px de ancho.
+2. Haz doble clic en ACTUALIZAR_FOTOS.bat. Renombra las nuevas como foto1, foto2, foto3...
+   (las que ya se llaman fotoN no se tocan, para no perder su lugar/fecha/categoria)
+   y crea lista.json con todas.
+3. Sube la carpeta fotos a GitHub. El sitio las lee solo; no hay que escribirlas en el codigo.
+
+Ojo: si el repositorio es publico, estas fotos tambien lo son. Para fotos privadas usa
+Admin -> + Subir fotos (van a tu Drive).

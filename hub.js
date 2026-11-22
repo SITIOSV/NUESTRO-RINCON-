@@ -10,7 +10,7 @@
   const FOTOS_DIR = 'fotos/';
   const FOTOS_ARCHIVOS = ``;   // ej.: foto1.jpg, foto2.png, foto3.jpg
   const HOME_ORDER = ['cartas', 'fechas', 'juntos', 'aniversarios'];   // orden de importancia en Inicio
-  const URL_API = 'https://script.google.com/macros/s/AKfycbwDdST08YrEDi9v-MI2JzdmCfSmZkW1hSMTArJyYjJ9fyXrQdxnqXBRdyNT5aiJ2rfcWA/exec';
+  const URL_API = 'https://script.google.com/macros/s/AKfycbx6-ZERKdkwu50VW3_aYZzVDdjUjRBsnnIatOLu_mQiv6kbnvOVTjG_pKoSylcf6jUa_g/exec';
   const TZ_OFF = -6 * 3600 * 1000;      // America/El_Salvador (sin horario de verano)
   const LS = 'hub_v1';
   const HOME_AVISO_DIAS = 3;   // en Inicio, fechas y aniversarios aparecen solo cuando faltan hasta N días (y el propio día)
@@ -30,11 +30,17 @@
   const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 
   /* ---------------- Datos ---------------- */
-  const D0 = { fecha_inicio: '', categorias: [], lugares: [], fotos: [], favoritos: [], favoritos_cartas: [], fechas: [], notas: [], aniversarios_correo: true, dias_antes: 1 };
+  const D0 = { fecha_inicio: '', categorias: [], lugares: [], fotos: [], favoritos: [], favoritos_cartas: [], fechas: [], notas: [], aniversarios_correo: true, correo_ella_edita: true, dias_antes: 1 };
   let D = Object.assign({}, D0);
   let loaded = false, offline = false;
   try { const c = JSON.parse(localStorage.getItem(LS) || 'null'); if (c && c.ok) { D = Object.assign({}, D0, c); } } catch (e) {}
-  const codeFiles = () => FOTOS_ARCHIVOS.split(',').map((x) => x.trim()).filter(Boolean);
+  /* fotos/lista.json lo genera el archivo ACTUALIZAR_FOTOS.bat (lista de foto1.jpg, foto2.png…). Si no existe, no pasa nada. */
+  let LISTA = [];
+  const okName = (x) => /^[A-Za-z0-9_.-]+\.(jpe?g|png|webp)$/i.test(x);
+  function loadLista() {
+    return fetch(FOTOS_DIR + 'lista.json', { cache: 'no-cache', credentials: 'omit' }).then((r) => (r.ok ? r.json() : [])).then((j) => { const a = Array.isArray(j) ? j : (j && Array.isArray(j.fotos) ? j.fotos : []); LISTA = a.filter((x) => typeof x === 'string' && okName(x)); }).catch(() => {});
+  }
+  const codeFiles = () => FOTOS_ARCHIVOS.split(',').map((x) => x.trim()).filter(Boolean).concat(LISTA.filter((x) => FOTOS_ARCHIVOS.indexOf(x) < 0));
   function photos() {
     const meta = {}; D.fotos.forEach((f) => { meta[f.archivo] = f; });
     const names = codeFiles(); D.fotos.forEach((f) => { if (names.indexOf(f.archivo) < 0) names.push(f.archivo); });
@@ -57,8 +63,19 @@
   }
   let hyT = null; const queueHydrate = () => { clearTimeout(hyT); hyT = setTimeout(hydrate, 120); };
 
-  async function api(method, params, body) {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 15000);
+  /* Textos del modal de carga según la acción (todo lo que el usuario inicia bloquea la pantalla con un mensaje). */
+  const BUSY_TXT = { admin_entrar: 'Verificando la clave…', correo_set: 'Guardando tu correo…', correos_leer: 'Leyendo los correos…', correos_guardar: 'Guardando correos…', correo_prueba: 'Enviando el correo de prueba…', recordatorios_activar: 'Activando los avisos diarios…', config_guardar: 'Guardando…', foto_subir: 'Subiendo la foto… no cierres la página', foto_guardar: 'Guardando la foto…', foto_borrar: 'Borrando la foto…', foto_drive_admin: 'Cargando la foto…', lugar_guardar: 'Guardando el lugar…', lugar_borrar: 'Borrando el lugar…', categoria_agregar: 'Agregando la categoría…', fecha_guardar: 'Guardando la fecha…', fecha_borrar: 'Borrando la fecha…', carta_leer: 'Abriendo la carta…', carta_guardar: 'Guardando la carta…', cartas_importar: 'Importando cartas…', carta_dia: 'Abriendo tu carta…', pend_listar: 'Buscando pendientes…', pend_aprobar: 'Aprobando…', pend_rechazar: 'Rechazando…', pend_nota: 'Enviando tu recuerdo…', pend_foto: 'Enviando tu foto…', bloqueo_set: 'Aplicando el bloqueo…', start_site: 'Reactivando el sitio…', stop_site: 'Bloqueando el sitio…', estado: 'Leyendo el estado…' };
+  const QUIET = { fav: 1, foto_drive: 1 };            // se pintan al instante o van en segundo plano
+  const BUSY_GET = { carta_dia: 1 };                  // lecturas que sí inicia el usuario con un clic
+  async function api(method, params, body, opt) {
+    const act = (body && body.action) || (params && params.action) || '';
+    const wantBusy = opt && opt.busy === false ? false : (opt && typeof opt.busy === 'string') || (method === 'POST' ? !QUIET[act] : !!BUSY_GET[act]);
+    const txt = (opt && typeof opt.busy === 'string') ? opt.busy : (BUSY_TXT[act] || 'Guardando…');
+    if (wantBusy && window.HBusy) window.HBusy.on(txt);
+    try { return await api0(method, params, body, act); } finally { if (wantBusy && window.HBusy) window.HBusy.off(); }
+  }
+  async function api0(method, params, body, act) {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), method === 'POST' ? (act === 'foto_subir' || act === 'pend_foto' || act === 'cartas_importar' ? 70000 : 35000) : 20000);
     try {
       let url = URL_API; const init = { method, signal: ctrl.signal, redirect: 'follow', cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' };
       if (method === 'GET') url += '?' + new URLSearchParams(Object.assign({ _: Date.now() }, params)).toString();
@@ -266,6 +283,7 @@
     }, {});
     w.querySelectorAll('.hb-item[data-id]').forEach((b) => { if (b.dataset.id) b.onclick = () => { if (admin) editFecha(D.fechas.find((f) => f.id === b.dataset.id)); }; });
     $('f-new').onclick = () => editFecha(null);
+    if (D.correo_ella_edita === false) { const row = $('c-m').parentElement; row.style.display = 'none'; $('c-e').textContent = 'Tu correo ya está registrado para los avisos 💌'; }
     $('c-adm').onclick = adminCorreos;
     $('c-g').onclick = async () => {
       const m = $('c-m').value.trim(), e = $('c-e');
@@ -289,21 +307,52 @@
       if (j.ok) { await load(); rerender(); toast('Fecha guardada'); } else if (j.error !== 'cancel') toast(errTxt(j));
     };
   }
+  /* ---------------- ADMINISTRADOR DE CORREOS (los dos) ---------------- */
+  const cuandoAviso = (p) => (p.aviso_en < 0 ? 'el aviso ya pasó' : p.aviso_en === 0 ? 'se avisa HOY' : 'se avisa en ' + pl(p.aviso_en, 'día', 'días'));
+  const quien = (a) => (a === 'yo' ? 'solo a mí' : a === 'ella' ? 'solo a ella' : 'a los dos');
   async function adminCorreos() {
     const r = await adminPost('correos_leer', {}); if (!r.ok) { if (r.error !== 'cancel') toast(errTxt(r)); return; }
-    const c = r.correos || {};
-    modal('<h3>Correos y avisos</h3><label>Mi correo<input class="hb-in" id="m-y" type="email" value="' + esc(c.yo) + '"></label><label>Correo de ella<input class="hb-in" id="m-e" type="email" value="' + esc(c.ella) + '"></label>' +
-      '<div class="cks"><label><input type="checkbox" id="m-a"' + (D.aniversarios_correo ? ' checked' : '') + '>Avisar aniversarios mensuales y anuales</label></div><label>Días de anticipación por defecto<input class="hb-in" id="m-b" type="number" min="0" max="30" value="' + esc(D.dias_antes || 1) + '"></label><div class="err" id="m-r"></div>' +
-      '<button class="hb-btn" id="m-g" type="button">Guardar</button><div class="row"><button class="hb-btn ghost" id="m-p" type="button">✉ Enviar prueba</button><button class="hb-btn ghost" id="m-t" type="button">⏰ Activar avisos diarios</button></div><button class="hb-btn ghost" id="m-x" type="button">Cerrar</button>');
-    const msg = (t) => { $('m-r').style.color = '#9fe3a5'; $('m-r').textContent = t; };
-    $('m-x').onclick = closeModal;
-    $('m-g').onclick = async () => {
-      let j = await adminPost('correos_guardar', { yo: $('m-y').value.trim(), ella: $('m-e').value.trim() });
-      if (j.ok) j = await adminPost('config_guardar', { aniversarios_correo: $('m-a').checked, dias_antes: Number($('m-b').value) });
-      if (j.ok) { await load(); msg('Guardado ✓'); } else { $('m-r').style.color = ''; $('m-r').textContent = errTxt(j); }
+    let c = r.correos || {}, est = r.estado || {};
+    const chip = (v) => (v ? '<span class="mc-chip ok">✓ configurado</span>' : '<span class="mc-chip no">⚠ falta</span>');
+    const person = (rol, titulo, val) => '<div class="mc-p"><div class="mc-h"><b>' + titulo + '</b>' + chip(val) + '</div><input class="hb-in" id="m-' + rol + '" type="email" placeholder="correo@ejemplo.com" autocomplete="off" value="' + esc(val) + '" aria-label="Correo ' + titulo + '"><div class="row"><button class="hb-btn" data-sv="' + rol + '" type="button" style="margin:0">Guardar</button><button class="hb-btn ghost" data-ts="' + rol + '" type="button" style="margin:0"' + (val ? '' : ' disabled') + '>✉ Probar</button><button class="hb-btn ghost" data-rm="' + rol + '" type="button" style="margin:0"' + (val ? '' : ' disabled') + '>Quitar</button></div></div>';
+    const draw = (nota) => {
+      const prox = (est.proximos || []).map((p) => '<li><b>' + esc(p.titulo) + '</b><small>' + fmtDate(p.fecha) + ' · ' + cuandoAviso(p) + ' · ' + quien(p.avisar) + '</small></li>').join('');
+      modal('<h3>📬 Administrador de correos</h3><p class="hb-small">Los avisos salen desde tu cuenta de Google. Aquí ves y cambias el correo de los dos.</p>' +
+        person('yo', 'Yo', c.yo) + person('ella', 'Ella', c.ella) +
+        '<div class="mc-p"><div class="mc-h"><b>Avisos</b></div><div class="cks"><label><input type="checkbox" id="m-a"' + (D.aniversarios_correo ? ' checked' : '') + '>Avisar aniversarios mensuales y anuales</label><label><input type="checkbox" id="m-ed"' + (D.correo_ella_edita !== false ? ' checked' : '') + '>Ella puede cambiar su correo desde el sitio</label></div><label>Días de anticipación por defecto<input class="hb-in" id="m-b" type="number" min="0" max="30" value="' + esc(D.dias_antes == null ? 1 : D.dias_antes) + '"></label><button class="hb-btn ghost" id="m-cfg" type="button" style="margin:0">Guardar avisos</button></div>' +
+        '<div class="mc-p"><div class="mc-h"><b>Estado</b>' + (est.trigger ? '<span class="mc-chip ok">⏰ avisos diarios activos</span>' : '<span class="mc-chip no">⚠ avisos diarios apagados</span>') + '</div>' +
+        '<small class="hb-small">Hora de envío: 8:00 a. m. · Correos que quedan hoy: ' + (est.cuota == null ? '—' : esc(est.cuota)) + '</small>' +
+        '<button class="hb-btn ghost" id="m-t" type="button" style="margin:0">' + (est.trigger ? '↻ Reinstalar avisos diarios' : '⏰ Activar avisos diarios') + '</button>' +
+        '<div class="mc-h" style="margin-top:.3rem"><b>Próximos avisos</b></div>' + (prox ? '<ul class="mc-l">' + prox + '</ul>' : '<small class="hb-small">No hay fechas próximas con aviso.</small>') + '</div>' +
+        '<div class="err" id="m-r" role="status">' + (nota || '') + '</div><div class="row"><button class="hb-btn ghost" id="m-pa" type="button" style="margin:0">✉ Prueba a los dos</button><button class="hb-btn" id="m-x" type="button" style="margin:0">Cerrar</button></div>');
+      if (nota) $('m-r').style.color = '#9fe3a5';
+      wire();
     };
-    $('m-p').onclick = async () => { msg('Enviando…'); const j = await adminPost('correo_prueba', {}); if (j.ok) msg('Enviado a ' + j.enviados + ' correo(s). Cuota restante hoy: ' + j.cuota); else { $('m-r').style.color = ''; $('m-r').textContent = j.error === 'sin-correos' ? 'Primero guarda al menos un correo.' : errTxt(j); } };
-    $('m-t').onclick = async () => { const j = await adminPost('recordatorios_activar', {}); if (j.ok) msg('Avisos diarios activados (8:00 a. m.) ✓'); else { $('m-r').style.color = ''; $('m-r').textContent = errTxt(j); } };
+    const say = (t, ok) => { const e = $('m-r'); if (!e) return; e.style.color = ok ? '#9fe3a5' : ''; e.textContent = t; };
+    const refresh = async (nota) => { const q = await adminPost('correos_leer', {}); if (q.ok) { c = q.correos || {}; est = q.estado || {}; await load(); draw(nota); } else say(errTxt(q)); };
+    const wire = () => {
+      const m = $('hb-modal');
+      $('m-x').onclick = closeModal;
+      m.querySelectorAll('[data-sv]').forEach((b) => { b.onclick = async () => {
+        const rol = b.dataset.sv, v = $('m-' + rol).value.trim();
+        if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) { say('Ese correo no es válido.'); return; }
+        const j = await adminPost('correos_guardar', { [rol]: v }); if (j.ok) refresh('Guardado ✓'); else say(errTxt(j));
+      }; });
+      m.querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => {
+        const rol = b.dataset.rm; if (!confirm('¿Quitar el correo de ' + (rol === 'yo' ? 'ti' : 'ella') + '? Ya no recibirá avisos.')) return;
+        const j = await adminPost('correos_guardar', { [rol]: '' }); if (j.ok) refresh('Correo quitado'); else say(errTxt(j));
+      }; });
+      const test = async (rol) => { const j = await adminPost('correo_prueba', { rol }); if (j.ok) say('Prueba enviada a ' + pl(j.enviados, 'correo', 'correos') + ' ✓ (revisa también spam). Quedan ' + j.cuota + ' hoy.', true); else say(j.error === 'sin-correos' ? 'Primero guarda ese correo.' : errTxt(j)); };
+      m.querySelectorAll('[data-ts]').forEach((b) => { b.onclick = () => test(b.dataset.ts); });
+      $('m-pa').onclick = () => test('ambos');
+      $('m-cfg').onclick = async () => {
+        const dias = Number($('m-b').value); if (!(dias >= 0 && dias <= 30)) { say('Los días van de 0 a 30.'); return; }
+        const j = await adminPost('config_guardar', { aniversarios_correo: $('m-a').checked, correo_ella_edita: $('m-ed').checked, dias_antes: dias });
+        if (j.ok) refresh('Avisos guardados ✓'); else say(errTxt(j));
+      };
+      $('m-t').onclick = async () => { const j = await adminPost('recordatorios_activar', {}); if (j.ok) refresh('Avisos diarios activados (8:00 a. m.) ✓'); else say(errTxt(j)); };
+    };
+    draw('');
   }
 
   /* ---------------- CARTAS DIARIAS 2027 ---------------- */
@@ -526,7 +575,7 @@
     }).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   }
   function gridHtml(list) {
-    if (!list.length) return '<p class="hb-small" style="padding:.6rem 0">No hay fotos con estos filtros. Si acabas de agregarlas, escribe sus nombres en el código (FOTOS_ARCHIVOS).</p>';
+    if (!list.length) return photos().length ? '<div class="hb-card" style="text-align:center"><h3>Ninguna foto con estos filtros</h3><p>Prueba quitando algún filtro 💌</p></div>' : '<div class="hb-card" style="text-align:center"><h3>📷 Aquí vivirán nuestras fotos</h3><p>Muy pronto vamos a llenar este álbum de recuerdos.</p>' + (admin ? '<p class="hb-small">Súbelas desde ＋ Subir fotos.</p>' : '') + '</div>';
     const fav = favSet();
     return '<div class="hb-grid">' + list.map((p, i) => '<button class="hb-ph" type="button" data-i="' + i + '" aria-label="Foto ' + esc(p.archivo) + '"><img loading="lazy" decoding="async" alt="" src="' + thumbSrc(p) + '"><span class="miss">Falta ' + esc(p.archivo) + '</span>' + (fav.has(p.archivo) ? '<span class="fv">♥</span>' : '') + (!p.lugar_id || !lugarById(p.lugar_id) ? '<span class="un">sin clasificar</span>' : '') + '</button>').join('') + '</div>';
   }
@@ -612,7 +661,7 @@
       '<div class="row"><button class="hb-btn ghost" id="e-x" type="button">Cancelar</button><button class="hb-btn" id="e-g" type="button">Guardar</button></div><button class="hb-btn danger" id="e-del" type="button">Quitar esta foto del sitio</button>');
     $('e-x').onclick = closeModal;
     $('e-del').onclick = async () => {
-      if (!confirm('¿Quitar esta foto del sitio?' + (/^drive_/.test(p.archivo) ? ' Se manda a la papelera de tu Drive.' : ' (El archivo sigue en tu carpeta fotos/; bórralo allí y quita su nombre de FOTOS_ARCHIVOS.)'))) return;
+      if (!confirm('¿Quitar esta foto del sitio?' + (/^drive_/.test(p.archivo) ? ' Se manda a la papelera de tu Drive.' : ' (El archivo sigue en tu carpeta fotos/; bórralo allí, vuelve a ejecutar ACTUALIZAR_FOTOS.bat y sube los cambios.)'))) return;
       closeModal(); const j = await adminPost('foto_borrar', { archivo: p.archivo });
       if (j.ok) { await load(); closeViewer(); rerender(); toast('Foto quitada'); } else if (j.error !== 'cancel') toast(errTxt(j));
     };
@@ -801,8 +850,8 @@
     $('ad-o').onclick = go; k.onkeydown = (e) => { if (e.key === 'Enter') go(); }; $('ad-c').onclick = closeModal;
   }
   function adminPanel() {
-    modal('<h3>🛠 Administrador</h3><p class="hb-small">Modo administrador activo. En cada sección verás los botones ✎ y ＋ para editar.</p><button class="hb-btn" id="ap-s" type="button">SOPORTE</button><button class="hb-btn ghost" id="ap-h" type="button">❔ Ayuda de bienvenida</button><button class="hb-btn ghost" id="ap-o" type="button">Salir del modo admin</button><button class="hb-btn ghost" id="ap-x" type="button">Cerrar</button>');
-    $('ap-x').onclick = closeModal; $('ap-s').onclick = soporte; $('ap-h').onclick = () => { closeModal(); showHelp(); };
+    modal('<h3>🛠 Administrador</h3><p class="hb-small">Modo administrador activo. En cada sección verás los botones ✎ y ＋ para editar.</p><button class="hb-btn" id="ap-s" type="button">SOPORTE</button><button class="hb-btn" id="ap-c" type="button">📬 Correos (los dos)</button><button class="hb-btn ghost" id="ap-h" type="button">❔ Ayuda de bienvenida</button><button class="hb-btn ghost" id="ap-o" type="button">Salir del modo admin</button><button class="hb-btn ghost" id="ap-x" type="button">Cerrar</button>');
+    $('ap-x').onclick = closeModal; $('ap-s').onclick = soporte; $('ap-c').onclick = adminCorreos; $('ap-h').onclick = () => { closeModal(); showHelp(); };
     $('ap-o').onclick = () => { admin = false; adminKey = ''; ssSet('hb_admin', ''); ssSet('hb_key', ''); document.body.classList.remove('hb-admin'); closeModal(); toast('Modo administrador apagado'); if (cur === 'pend') render(); };
   }
   async function soporte() {
@@ -886,7 +935,11 @@
     });
     render();
     initSiteBlock();
-    Promise.all([load(), loadCartas()]).then(() => { if (!pick && !$('hb-modal').classList.contains('on') && !$('hb-letter').classList.contains('on') && !$('hb-viewer').classList.contains('on')) rerender(); });
+    const first = Promise.all([load(), loadCartas(), loadLista()]);
+    let hayCache = false; try { hayCache = !!localStorage.getItem(LS); } catch (e) {}
+    const introOn = PAGE === 'home' && $('intro-cal') && !$('intro-cal').classList.contains('gone');
+    if (!hayCache && !introOn && window.HBusy) window.HBusy.run('Cargando nuestro rincón…', () => first);
+    first.then(() => { if (!pick && !$('hb-modal').classList.contains('on') && !$('hb-letter').classList.contains('on') && !$('hb-viewer').classList.contains('on')) rerender(); });
     if (PAGE === 'home') {   // la ayuda de primera vez sale cuando termina la animación de entrada
       let seen = false; try { seen = localStorage.getItem('hub_visto') === '1'; } catch (e) {}
       if (!seen) {
