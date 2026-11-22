@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://script.google.com https://script.googleusercontent.com">
+<title>Prueba de conexión</title>
+<style>body{font:16px system-ui,sans-serif;background:#14080e;color:#fff5e9;margin:0;padding:18px;line-height:1.45}h1{font-size:1.2rem;color:#f7e29c}pre{white-space:pre-wrap;word-break:break-all;background:#220f19;border:1px solid #d4af3755;border-radius:10px;padding:10px;font-size:.8rem}.ok{color:#9fe3a5}.no{color:#ffb4a0}button{background:#d4af37;border:0;border-radius:10px;padding:.7rem 1rem;font-weight:700;margin:.5rem 0}</style></head>
+<body><h1>Prueba de conexión con el script</h1>
+<p>Esta página pide los datos al mismo link que usa el sitio y te dice qué pasa.</p>
+<button id="go" type="button">Probar de nuevo</button>
+<div id="out"></div>
+<script>
+var URL_ = 'https://script.google.com/macros/s/AKfycbzim9NIUvePX36k1ejl9iBMWE8pl_A9PJi4XyF6OlsGNWv8XNpnMDrqFRkb0utQ9dxhPg/exec';
+var out = document.getElementById('out');
+function line(cls, t) { var p = document.createElement('p'); p.className = cls; p.textContent = t; out.appendChild(p); }
+function pre(t) { var p = document.createElement('pre'); p.textContent = t; out.appendChild(p); }
+async function probar(action) {
+  try {
+    var res = await fetch(URL_ + '?action=' + action + '&_=' + Date.now(), { method: 'GET', redirect: 'follow', cache: 'no-store', credentials: 'omit' });
+    var txt = await res.text();
+    var ok = false, j = null; try { j = JSON.parse(txt); ok = j && j.ok === true; } catch (e) {}
+    line(ok ? 'ok' : 'no', (ok ? 'OK' : 'PROBLEMA') + ' · action=' + action + ' · HTTP ' + res.status + (j ? '' : ' · la respuesta NO es JSON (el link no es una aplicación web pública o falta Code.gs)'));
+    pre(txt.slice(0, 400));
+  } catch (e) {
+    line('no', 'FALLÓ · action=' + action + ' · ' + e.name + ': ' + e.message + ' → el navegador no pudo leer la respuesta (implementación sin acceso "Cualquier persona", link mal copiado, o sin internet).');
+  }
+}
+async function run() { out.innerHTML = ''; line('', 'Link: ' + URL_); await probar('estado'); await probar('hub'); line('', 'Copia o fotografía este resultado y mándamelo.'); }
+document.getElementById('go').onclick = run; run();
+</script></body></html>
