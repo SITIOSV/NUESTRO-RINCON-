@@ -64,7 +64,7 @@
   let hyT = null; const queueHydrate = () => { clearTimeout(hyT); hyT = setTimeout(hydrate, 120); };
 
   /* Textos del modal de carga según la acción (todo lo que el usuario inicia bloquea la pantalla con un mensaje). */
-  const BUSY_TXT = { admin_entrar: 'Verificando la clave…', correo_set: 'Guardando tu correo…', correos_leer: 'Leyendo los correos…', correos_guardar: 'Guardando correos…', correo_prueba: 'Enviando el correo de prueba…', recordatorios_activar: 'Activando los avisos diarios…', config_guardar: 'Guardando…', foto_subir: 'Subiendo la foto… no cierres la página', foto_guardar: 'Guardando la foto…', foto_borrar: 'Borrando la foto…', foto_drive_admin: 'Cargando la foto…', lugar_guardar: 'Guardando el lugar…', lugar_borrar: 'Borrando el lugar…', categoria_agregar: 'Agregando la categoría…', fecha_guardar: 'Guardando la fecha…', fecha_borrar: 'Borrando la fecha…', carta_leer: 'Abriendo la carta…', carta_guardar: 'Guardando la carta…', cartas_importar: 'Importando cartas…', carta_dia: 'Abriendo tu carta…', pend_listar: 'Buscando pendientes…', pend_aprobar: 'Aprobando…', pend_rechazar: 'Rechazando…', pend_nota: 'Enviando tu recuerdo…', pend_foto: 'Enviando tu foto…', bloqueo_set: 'Aplicando el bloqueo…', start_site: 'Reactivando el sitio…', stop_site: 'Bloqueando el sitio…', estado: 'Leyendo el estado…' };
+  const BUSY_TXT = { admin_entrar: 'Verificando la clave…', correo_set: 'Guardando tu correo…', correos_leer: 'Leyendo los correos…', correos_guardar: 'Guardando correos…', correo_prueba: 'Enviando el correo de prueba…', ella_admin_leer: 'Leyendo…', ella_admin_set: 'Guardando…', recordatorios_activar: 'Activando los avisos diarios…', config_guardar: 'Guardando…', foto_subir: 'Subiendo la foto… no cierres la página', foto_guardar: 'Guardando la foto…', foto_borrar: 'Borrando la foto…', foto_drive_admin: 'Cargando la foto…', lugar_guardar: 'Guardando el lugar…', lugar_borrar: 'Borrando el lugar…', categoria_agregar: 'Agregando la categoría…', fecha_guardar: 'Guardando la fecha…', fecha_borrar: 'Borrando la fecha…', carta_leer: 'Abriendo la carta…', carta_guardar: 'Guardando la carta…', cartas_importar: 'Importando cartas…', carta_dia: 'Abriendo tu carta…', pend_listar: 'Buscando pendientes…', pend_aprobar: 'Aprobando…', pend_rechazar: 'Rechazando…', pend_nota: 'Enviando tu recuerdo…', pend_foto: 'Enviando tu foto…', bloqueo_set: 'Aplicando el bloqueo…', start_site: 'Reactivando el sitio…', stop_site: 'Bloqueando el sitio…', estado: 'Leyendo el estado…' };
   const QUIET = { fav: 1, foto_drive: 1 };            // se pintan al instante o van en segundo plano
   const BUSY_GET = { carta_dia: 1 };                  // lecturas que sí inicia el usuario con un clic
   async function api(method, params, body, opt) {
@@ -165,7 +165,7 @@
       $('hb-kc').onclick = () => { closeModal(); res(''); };
     });
   }
-  const ERR = { clave: 'Clave incorrecta.', bloqueado: 'Demasiados intentos. Espera unos minutos.', 'sin-clave': 'El servidor no tiene clave configurada.', ocupado: 'El servidor está ocupado, intenta otra vez.', fecha: 'Fecha no válida.', datos: 'Datos no válidos.', correo: 'Correo no válido.', limite: 'Demasiados envíos, intenta más tarde.', lleno: 'Hay demasiados pendientes por aprobar.', tamano: 'La foto es demasiado grande.', tipo: 'Formato de foto no válido.', no: 'No disponible.' };
+  const ERR = { clave: 'Clave incorrecta.', bloqueado: 'Demasiados intentos. Espera unos minutos.', 'sin-clave': 'El servidor no tiene clave configurada.', ocupado: 'El servidor está ocupado, intenta otra vez.', fecha: 'Fecha no válida.', datos: 'Datos no válidos.', correo: 'Correo no válido.', limite: 'Demasiados envíos, intenta más tarde.', lleno: 'Hay demasiados pendientes por aprobar.', tamano: 'La foto es demasiado grande.', tipo: 'Formato de foto no válido.', no: 'Solo el administrador principal puede hacer esto.', envio: 'Google no dejó enviar el correo.' };
   async function adminPost(action, data) {
     const clave = await askKey(); if (!clave) return { ok: false, error: 'cancel' };
     try {
@@ -319,7 +319,7 @@
       const prox = (est.proximos || []).map((p) => '<li><b>' + esc(p.titulo) + '</b><small>' + fmtDate(p.fecha) + ' · ' + cuandoAviso(p) + ' · ' + quien(p.avisar) + '</small></li>').join('');
       modal('<h3>📬 Administrador de correos</h3><p class="hb-small">Los avisos salen desde tu cuenta de Google. Aquí ves y cambias el correo de los dos.</p>' +
         person('yo', 'Yo', c.yo) + person('ella', 'Ella', c.ella) +
-        '<div class="mc-p"><div class="mc-h"><b>Avisos</b></div><div class="cks"><label><input type="checkbox" id="m-a"' + (D.aniversarios_correo ? ' checked' : '') + '>Avisar aniversarios mensuales y anuales</label><label><input type="checkbox" id="m-ed"' + (D.correo_ella_edita !== false ? ' checked' : '') + '>Ella puede cambiar su correo desde el sitio</label></div><label>Días de anticipación por defecto<input class="hb-in" id="m-b" type="number" min="0" max="30" value="' + esc(D.dias_antes == null ? 1 : D.dias_antes) + '"></label><button class="hb-btn ghost" id="m-cfg" type="button" style="margin:0">Guardar avisos</button></div>' +
+        '<div class="mc-p"><div class="mc-h"><b>Avisos</b></div><div class="cks"><label><input type="checkbox" id="m-a"' + (D.aniversarios_correo ? ' checked' : '') + '>Avisar aniversarios mensuales y anuales</label><label><input type="checkbox" id="m-ed"' + (D.correo_ella_edita !== false ? ' checked' : '') + '>Ella puede cambiar su correo desde el sitio</label><label><input type="checkbox" id="m-lk"' + (D.correo_enlace ? ' checked' : '') + '>Incluir botón con enlace al sitio en los correos</label></div><label>Días de anticipación por defecto<input class="hb-in" id="m-b" type="number" min="0" max="30" value="' + esc(D.dias_antes == null ? 1 : D.dias_antes) + '"></label><button class="hb-btn ghost" id="m-cfg" type="button" style="margin:0">Guardar avisos</button></div>' +
         '<div class="mc-p"><div class="mc-h"><b>Estado</b>' + (est.trigger ? '<span class="mc-chip ok">⏰ avisos diarios activos</span>' : '<span class="mc-chip no">⚠ avisos diarios apagados</span>') + '</div>' +
         '<small class="hb-small">Hora de envío: 8:00 a. m. · Correos que quedan hoy: ' + (est.cuota == null ? '—' : esc(est.cuota)) + '</small>' +
         '<button class="hb-btn ghost" id="m-t" type="button" style="margin:0">' + (est.trigger ? '↻ Reinstalar avisos diarios' : '⏰ Activar avisos diarios') + '</button>' +
@@ -342,12 +342,12 @@
         const rol = b.dataset.rm; if (!confirm('¿Quitar el correo de ' + (rol === 'yo' ? 'ti' : 'ella') + '? Ya no recibirá avisos.')) return;
         const j = await adminPost('correos_guardar', { [rol]: '' }); if (j.ok) refresh('Correo quitado'); else say(errTxt(j));
       }; });
-      const test = async (rol) => { const j = await adminPost('correo_prueba', { rol }); if (j.ok) say('Prueba enviada a ' + pl(j.enviados, 'correo', 'correos') + ' ✓ (revisa también spam). Quedan ' + j.cuota + ' hoy.', true); else say(j.error === 'sin-correos' ? 'Primero guarda ese correo.' : errTxt(j)); };
+      const test = async (rol) => { const j = await adminPost('correo_prueba', { rol }); if (j.ok) say('Prueba enviada a ' + pl(j.enviados, 'correo', 'correos') + ' ✓ (revisa también spam). Quedan ' + j.cuota + ' hoy.', true); else say(j.error === 'sin-correos' ? 'Primero guarda ese correo.' : errTxt(j) + (j.detalle ? ' ' + j.detalle : '')); };
       m.querySelectorAll('[data-ts]').forEach((b) => { b.onclick = () => test(b.dataset.ts); });
       $('m-pa').onclick = () => test('ambos');
       $('m-cfg').onclick = async () => {
         const dias = Number($('m-b').value); if (!(dias >= 0 && dias <= 30)) { say('Los días van de 0 a 30.'); return; }
-        const j = await adminPost('config_guardar', { aniversarios_correo: $('m-a').checked, correo_ella_edita: $('m-ed').checked, dias_antes: dias });
+        const j = await adminPost('config_guardar', { aniversarios_correo: $('m-a').checked, correo_ella_edita: $('m-ed').checked, correo_enlace: $('m-lk').checked, dias_antes: dias });
         if (j.ok) refresh('Avisos guardados ✓'); else say(errTxt(j));
       };
       $('m-t').onclick = async () => { const j = await adminPost('recordatorios_activar', {}); if (j.ok) refresh('Avisos diarios activados (8:00 a. m.) ✓'); else say(errTxt(j)); };
@@ -728,9 +728,9 @@
     loadLeaflet().then(() => {
       if (tok !== mapTok || map || cur !== 'lugares' || !$('hb-map')) return;   // otra pintada más reciente ya se encargó
       const L = window.L; map = L.map('hb-map', { zoomControl: true, attributionControl: true }).setView([13.7, -89.2], 8);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap', referrerPolicy: 'origin' }).addTo(map);
       const pts = [];
-      D.lugares.forEach((l) => { if (!isFinite(l.lat) || !isFinite(l.lng)) return; pts.push([l.lat, l.lng]);
+      D.lugares.forEach((l) => { if (!D.mapa_pines || !isFinite(l.lat) || !isFinite(l.lng)) return; pts.push([l.lat, l.lng]);
         const mk = L.marker([l.lat, l.lng], { icon: L.divIcon({ className: '', html: '<div class="hb-pin">📍</div>', iconSize: [26, 26], iconAnchor: [13, 24] }), title: l.nombre, keyboard: true }).addTo(map);
         mk.on('click', () => showPlace(l.id)); markers[l.id] = mk; });
       if (pick) map.on('click', (e) => { const d = pick; pick = null; d.draft.lat = e.latlng.lat.toFixed(6); d.draft.lng = e.latlng.lng.toFixed(6); editLugar(d.draft, true); });
@@ -842,7 +842,7 @@
       if (busy || !k.value) return; busy = true; $('ad-e').style.color = ''; $('ad-e').textContent = 'Verificando…';
       try {
         const j = await api('POST', null, { action: 'admin_entrar', clave: k.value });
-        if (j && j.ok === true) { admin = true; adminKey = k.value; ssSet('hb_admin', '1'); ssSet('hb_key', adminKey); document.body.classList.add('hb-admin'); closeModal(); toast('Modo administrador activado'); if (cur === 'pend') render(); adminPanel(); return; }
+        if (j && j.ok === true) { admin = true; adminKey = k.value; ssSet('hb_admin', '1'); ssSet('hb_rol', j.rol || 'yo'); ssSet('hb_key', adminKey); document.body.classList.add('hb-admin'); closeModal(); toast('Modo administrador activado'); if (cur === 'pend') render(); adminPanel(); return; }
         $('ad-e').textContent = ERR[j && j.error] || 'No se pudo entrar.';
       } catch (e) { $('ad-e').textContent = 'Sin conexión. Intenta otra vez.'; }
       busy = false; k.value = '';
@@ -850,9 +850,27 @@
     $('ad-o').onclick = go; k.onkeydown = (e) => { if (e.key === 'Enter') go(); }; $('ad-c').onclick = closeModal;
   }
   function adminPanel() {
-    modal('<h3>🛠 Administrador</h3><p class="hb-small">Modo administrador activo. En cada sección verás los botones ✎ y ＋ para editar.</p><button class="hb-btn" id="ap-s" type="button">SOPORTE</button><button class="hb-btn" id="ap-c" type="button">📬 Correos (los dos)</button><button class="hb-btn ghost" id="ap-h" type="button">❔ Ayuda de bienvenida</button><button class="hb-btn ghost" id="ap-o" type="button">Salir del modo admin</button><button class="hb-btn ghost" id="ap-x" type="button">Cerrar</button>');
-    $('ap-x').onclick = closeModal; $('ap-s').onclick = soporte; $('ap-c').onclick = adminCorreos; $('ap-h').onclick = () => { closeModal(); showHelp(); };
-    $('ap-o').onclick = () => { admin = false; adminKey = ''; ssSet('hb_admin', ''); ssSet('hb_key', ''); document.body.classList.remove('hb-admin'); closeModal(); toast('Modo administrador apagado'); if (cur === 'pend') render(); };
+    modal('<h3>🛠 Administrador</h3><p class="hb-small">Modo administrador activo. En cada sección verás los botones ✎ y ＋ para editar.</p><button class="hb-btn" id="ap-s" type="button">SOPORTE</button><button class="hb-btn" id="ap-c" type="button">📬 Correos (los dos)</button>' + (ss('hb_rol') === 'ella' ? '' : '<button class="hb-btn" id="ap-e" type="button">👩 Acceso de ella</button>') + '<button class="hb-btn ghost" id="ap-m" type="button">🗺️ Pines en el mapa: ' + (D.mapa_pines ? 'encendidos' : 'apagados') + '</button><button class="hb-btn ghost" id="ap-h" type="button">❔ Ayuda de bienvenida</button><button class="hb-btn ghost" id="ap-o" type="button">Salir del modo admin</button><button class="hb-btn ghost" id="ap-x" type="button">Cerrar</button>');
+    $('ap-x').onclick = closeModal; $('ap-s').onclick = soporte;
+    if ($('ap-e')) $('ap-e').onclick = accesoElla;
+    $('ap-m').onclick = async () => { const j = await adminPost('config_guardar', { mapa_pines: !D.mapa_pines }); if (j.ok) { await load(); toast('Pines del mapa ' + (D.mapa_pines ? 'encendidos' : 'apagados')); closeModal(); if (cur === 'lugares') rerender(); } else if (j.error !== 'cancel') toast(errTxt(j)); }; $('ap-c').onclick = adminCorreos; $('ap-h').onclick = () => { closeModal(); showHelp(); };
+    $('ap-o').onclick = () => { admin = false; adminKey = ''; ssSet('hb_admin', ''); ssSet('hb_key', ''); ssSet('hb_rol', ''); document.body.classList.remove('hb-admin'); closeModal(); toast('Modo administrador apagado'); if (cur === 'pend') render(); };
+  }
+  async function accesoElla() {
+    const r = await adminPost('ella_admin_leer', {}); if (!r.ok) { if (r.error !== 'cancel') toast(errTxt(r)); return; }
+    modal('<h3>👩 Acceso de ella</h3><p class="hb-small">Si lo activas, ella puede entrar al modo administrador con su propia contraseña y usar las mismas funciones que tú (menos cambiar este acceso).</p>' +
+      '<div class="cks"><label><input type="checkbox" id="ea-a"' + (r.activo ? ' checked' : '') + '>Ella puede ser administradora</label></div>' +
+      '<label>Contraseña de ella<input class="hb-in" id="ea-k" type="text" autocomplete="off" maxlength="40" placeholder="' + (r.tiene_clave ? 'Déjalo vacío para no cambiarla' : 'Mínimo 4 caracteres') + '"></label>' +
+      '<div class="err" id="ea-e"></div><div class="row"><button class="hb-btn ghost" id="ea-x" type="button">Cancelar</button><button class="hb-btn" id="ea-g" type="button">Guardar</button></div>');
+    $('ea-x').onclick = closeModal;
+    $('ea-g').onclick = async () => {
+      const k = $('ea-k').value.trim(), act = $('ea-a').checked;
+      if (act && !r.tiene_clave && k.length < 4) { $('ea-e').textContent = 'Pon una contraseña de al menos 4 caracteres.'; return; }
+      if (k && k.length < 4) { $('ea-e').textContent = 'La contraseña debe tener al menos 4 caracteres.'; return; }
+      const data = { activo: act }; if (k) data.clave_ella = k;
+      const j = await adminPost('ella_admin_set', data);
+      if (j.ok) { closeModal(); toast(act ? 'Ella ya puede ser administradora' : 'Acceso de ella desactivado'); } else if (j.error !== 'cancel') $('ea-e').textContent = j.error === 'datos' ? 'Contraseña no válida (no puede ser igual a la tuya).' : errTxt(j);
+    };
   }
   async function soporte() {
     modal('<h3>SOPORTE</h3><p class="hb-small">Cargando…</p>');
