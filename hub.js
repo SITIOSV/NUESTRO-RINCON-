@@ -64,7 +64,7 @@
   let hyT = null; const queueHydrate = () => { clearTimeout(hyT); hyT = setTimeout(hydrate, 120); };
 
   /* Textos del modal de carga según la acción (todo lo que el usuario inicia bloquea la pantalla con un mensaje). */
-  const BUSY_TXT = { admin_entrar: 'Verificando la clave…', correo_set: 'Guardando tu correo…', correos_leer: 'Leyendo los correos…', correos_guardar: 'Guardando correos…', correo_prueba: 'Enviando el correo de prueba…', ella_admin_leer: 'Leyendo…', ella_admin_set: 'Guardando…', recordatorios_activar: 'Activando los avisos diarios…', config_guardar: 'Guardando…', foto_subir: 'Subiendo la foto… no cierres la página', foto_guardar: 'Guardando la foto…', foto_borrar: 'Borrando la foto…', foto_drive_admin: 'Cargando la foto…', lugar_guardar: 'Guardando el lugar…', lugar_borrar: 'Borrando el lugar…', categoria_agregar: 'Agregando la categoría…', fecha_guardar: 'Guardando la fecha…', fecha_borrar: 'Borrando la fecha…', carta_leer: 'Abriendo la carta…', carta_guardar: 'Guardando la carta…', cartas_importar: 'Importando cartas…', carta_dia: 'Abriendo tu carta…', pend_listar: 'Buscando pendientes…', pend_aprobar: 'Aprobando…', pend_rechazar: 'Rechazando…', pend_nota: 'Enviando tu recuerdo…', pend_foto: 'Enviando tu foto…', bloqueo_set: 'Aplicando el bloqueo…', start_site: 'Reactivando el sitio…', stop_site: 'Bloqueando el sitio…', estado: 'Leyendo el estado…' };
+  const BUSY_TXT = { admin_entrar: 'Verificando la clave…', correo_set: 'Guardando tu correo…', correos_leer: 'Leyendo los correos…', correos_guardar: 'Guardando correos…', correo_prueba: 'Enviando el correo de prueba…', ella_admin_leer: 'Leyendo…', mapa_resolver: 'Leyendo el enlace de Google Maps…', ella_admin_set: 'Guardando…', recordatorios_activar: 'Activando los avisos diarios…', config_guardar: 'Guardando…', foto_subir: 'Subiendo la foto… no cierres la página', foto_guardar: 'Guardando la foto…', foto_borrar: 'Borrando la foto…', foto_drive_admin: 'Cargando la foto…', lugar_guardar: 'Guardando el lugar…', lugar_borrar: 'Borrando el lugar…', categoria_agregar: 'Agregando la categoría…', fecha_guardar: 'Guardando la fecha…', fecha_borrar: 'Borrando la fecha…', carta_leer: 'Abriendo la carta…', carta_guardar: 'Guardando la carta…', cartas_importar: 'Importando cartas…', carta_dia: 'Abriendo tu carta…', pend_listar: 'Buscando pendientes…', pend_aprobar: 'Aprobando…', pend_rechazar: 'Rechazando…', pend_nota: 'Enviando tu recuerdo…', pend_foto: 'Enviando tu foto…', bloqueo_set: 'Aplicando el bloqueo…', start_site: 'Reactivando el sitio…', stop_site: 'Bloqueando el sitio…', estado: 'Leyendo el estado…' };
   const QUIET = { fav: 1, foto_drive: 1 };            // se pintan al instante o van en segundo plano
   const BUSY_GET = { carta_dia: 1 };                  // lecturas que sí inicia el usuario con un clic
   async function api(method, params, body, opt) {
@@ -99,7 +99,8 @@
   const ssSet = (k, v) => { try { if (v) sessionStorage.setItem(k, v); else sessionStorage.removeItem(k); } catch (e) {} };
   let cur = PAGE, admin = ss('hb_admin') === '1', adminKey = ss('hb_key');
   const F = { desde: '', hasta: '', lugar: '', cat: '', fav: false };
-  let fotosTab = 'album', lugaresTab = 'cal', selLugar = '', pick = null, map = null, markers = {}, tick = null;
+  let fotosTab = 'album', lugaresTab = 'cal', selLugar = '', pick = null, map = null, markers = {}, selMk = null, tick = null;
+  let lugListOpen = (() => { try { return localStorage.getItem('hb_lug_list') !== '0'; } catch (e) { return true; } })();
   if (PAGE === 'fotos') { if (P.get('tab') === 'cal' || P.get('tab') === 'album') fotosTab = P.get('tab'); if (P.get('lugar')) F.lugar = P.get('lugar'); }
   if (PAGE === 'lugares') { if (P.get('tab') === 'cal' || P.get('tab') === 'mapa') lugaresTab = P.get('tab'); if (P.get('lugar')) selLugar = P.get('lugar'); }
   const view = () => $('hb-view');
@@ -196,7 +197,7 @@
     location.href = pageUrl(name) + qs;
   }
   function render() {
-    clearInterval(tick); if (map) { try { map.remove(); } catch (e) {} map = null; markers = {}; }
+    clearInterval(tick); if (map) { try { map.remove(); } catch (e) {} map = null; markers = {}; selMk = null; }
     const s = PAGES.find((x) => x[0] === cur); $('hb-title').textContent = s ? s[3] : 'Inicio';
     document.title = (s ? s[3] + ' · ' : '') + 'Nuestro rincón';
     const v = view(); v.innerHTML = '<div class="hb-wrap" id="hb-w"></div>';
@@ -693,6 +694,7 @@
     const ph = photos().filter((p) => p.lugar_id === l.id).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
     const fechas = placeDates(l);
     return '<h3>📍 ' + esc(l.nombre) + '</h3>' + (fechas.length ? '<p>' + fechas.map((f) => '<span class="hb-chip">' + fmtDate(f) + '</span>').join('') + '</p>' : '') + (l.nota ? '<p>' + esc(l.nota) + '</p>' : '') + (ph.length ? '<div class="hb-grid" style="margin-top:.5rem" id="pc-g">' + ph.slice(0, 12).map((p, i) => '<button class="hb-ph" type="button" data-i="' + i + '"><img loading="lazy" alt="" src="' + thumbSrc(p) + '"><span class="miss">Falta</span></button>').join('') + '</div><button class="hb-btn ghost" id="pc-all" type="button">🖼️ Ver todas las fotos de este lugar</button>' : '<p class="hb-small">Aún no hay fotos de este lugar.</p>') +
+      (isFinite(l.lat) && isFinite(l.lng) ? '<div class="row" style="margin-top:.5rem"><a class="hb-btn" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?api=1&query=' + l.lat + ',' + l.lng + '">🗺️ Abrir en Google Maps</a><a class="hb-btn ghost" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/dir/?api=1&destination=' + l.lat + ',' + l.lng + '">🧭 Cómo llegar</a></div>' : '') +
       '<div style="margin-top:.4rem"><button class="hb-btn ghost hb-adm" id="pc-ed" type="button">✎ Editar lugar</button></div>';
   }
   function bindPlace(host, l) {
@@ -719,13 +721,37 @@
       const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload = res; s.onerror = () => rej(new Error('leaflet')); document.head.appendChild(s);
     });
   }
-  let mapTok = 0;
+  let mapTok = 0, gmSat = false;
+  /* Google Maps incrustado (sin clave): muestra el punto exacto del lugar elegido con su pin. */
+  function gmapSrc(l, sat) {
+    const ok = l && isFinite(l.lat) && isFinite(l.lng);
+    return 'https://www.google.com/maps?q=' + encodeURIComponent(ok ? l.lat + ',' + l.lng : 'El Salvador') + '&z=' + (ok ? 16 : 8) + '&hl=es&output=embed' + (sat ? '&t=k' : '');
+  }
+  /* Saca latitud y longitud de un enlace o texto de Google Maps. */
+  function parseCoords(t) {
+    t = decodeURIComponent(String(t || '').replace(/\+/g, ' ')); let m;
+    if ((m = /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/.exec(t))) return [m[1], m[2]];
+    if ((m = /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/.exec(t))) return [m[1], m[2]];
+    if ((m = /[?&](?:q|ll|query|destination|center)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/.exec(t))) return [m[1], m[2]];
+    if ((m = /^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(t))) return [m[1], m[2]];
+    return null;
+  }
   function lugMapa() {
     const tok = ++mapTok, host = $('hb-lb');
     host.innerHTML = (pick ? '<div class="hb-banner" id="hb-pb">📍 Toca el mapa para elegir el lugar. <button class="hb-btn ghost" id="hb-pc" type="button" style="margin:0 0 0 .5rem;padding:.2rem .7rem;color:#fff;border-color:#fff">Cancelar</button></div>' : '') +
-      '<div class="hb-map-wrap"><div class="hb-list" id="hb-ll">' + D.lugares.map((l) => '<button class="hb-item' + (l.id === selLugar ? ' on' : '') + '" data-id="' + esc(l.id) + '" type="button">📍 ' + esc(l.nombre) + '<small>' + (placeDates(l).length ? fmtDate(placeDates(l)[0]) : 'sin fecha') + '</small></button>').join('') + '</div><div id="hb-map" role="application" aria-label="Mapa de lugares"></div></div><div class="hb-card" id="hb-pd" style="margin-top:.8rem;display:none"></div>';
+      '<button class="hb-btn ghost" id="hb-lt" type="button" aria-expanded="' + lugListOpen + '" style="margin:0 0 .6rem">' + (lugListOpen ? '▾' : '▸') + ' Lugares (' + D.lugares.length + ')</button>' + (pick ? '' : '<button class="hb-btn ghost" id="hb-sat" type="button" style="margin:0 0 .6rem .4rem">' + (gmSat ? '🗺️ Mapa' : '🛰️ Satélite') + '</button>') + '<div class="hb-map-wrap' + (lugListOpen ? '' : ' collapsed') + '" id="hb-mw"><div class="hb-list" id="hb-ll">' + D.lugares.map((l) => '<button class="hb-item' + (l.id === selLugar ? ' on' : '') + '" data-id="' + esc(l.id) + '" type="button">📍 ' + esc(l.nombre) + '<small>' + (placeDates(l).length ? fmtDate(placeDates(l)[0]) : 'sin fecha') + '</small></button>').join('') + '</div><div id="hb-map" role="application" aria-label="Mapa de lugares"></div></div><div class="hb-card" id="hb-pd" style="margin-top:.8rem;display:none"></div>';
+    $('hb-lt').onclick = () => {
+      lugListOpen = !lugListOpen; try { localStorage.setItem('hb_lug_list', lugListOpen ? '1' : '0'); } catch (e) {}
+      $('hb-mw').classList.toggle('collapsed', !lugListOpen); $('hb-lt').setAttribute('aria-expanded', String(lugListOpen));
+      $('hb-lt').textContent = (lugListOpen ? '▾' : '▸') + ' Lugares (' + D.lugares.length + ')';
+      if (map) setTimeout(() => map.invalidateSize(), 60);
+    };
     if (pick) $('hb-pc').onclick = () => { const d = pick; pick = null; editLugar(d.draft, true); };
-    loadLeaflet().then(() => {
+    if (!pick) {
+      $('hb-map').innerHTML = '<iframe id="hb-gm" title="Google Maps" src="' + esc(gmapSrc(selLugar ? lugarById(selLugar) : null, gmSat)) + '" style="width:100%;height:100%;border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>';
+      $('hb-sat').onclick = () => { gmSat = !gmSat; $('hb-sat').textContent = gmSat ? '🗺️ Mapa' : '🛰️ Satélite'; $('hb-gm').src = gmapSrc(selLugar ? lugarById(selLugar) : null, gmSat); };
+      if (selLugar && lugarById(selLugar)) showPlace(selLugar);
+    } else loadLeaflet().then(() => {
       if (tok !== mapTok || map || cur !== 'lugares' || !$('hb-map')) return;   // otra pintada más reciente ya se encargó
       const L = window.L; map = L.map('hb-map', { zoomControl: true, attributionControl: true }).setView([13.7, -89.2], 8);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap', referrerPolicy: 'origin' }).addTo(map);
@@ -742,7 +768,12 @@
   function showPlace(id) {
     const l = lugarById(id); if (!l) return; selLugar = id;
     $('hb-ll').querySelectorAll('.hb-item').forEach((b) => b.classList.toggle('on', b.dataset.id === id));
-    if (map && isFinite(l.lat)) map.flyTo([l.lat, l.lng], Math.max(map.getZoom(), 14), { duration: .8 });
+    const gm = $('hb-gm'); if (gm) gm.src = gmapSrc(l, gmSat);
+    if (map && isFinite(l.lat)) {
+      map.flyTo([l.lat, l.lng], Math.max(map.getZoom(), 14), { duration: .8 });
+      if (selMk) { try { map.removeLayer(selMk); } catch (e) {} selMk = null; }
+      if (!markers[id] && window.L) selMk = window.L.marker([l.lat, l.lng], { icon: window.L.divIcon({ className: '', html: '<div class="hb-pin">📍</div>', iconSize: [26, 26], iconAnchor: [13, 24] }), title: l.nombre }).addTo(map);
+    }
     const d = $('hb-pd'); d.style.display = 'block'; d.innerHTML = placeCard(l); bindPlace(d, l);
     if (!pick) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -750,6 +781,7 @@
     const draft = keep ? l : { id: l ? l.id : '', nombre: l ? l.nombre : '', lat: l ? String(l.lat) : '', lng: l ? String(l.lng) : '', fechas: l ? l.fechas.join(', ') : '', nota: l ? l.nota : '' };
     modal('<h3>' + (draft.id ? 'Editar lugar' : 'Nuevo lugar') + '</h3><label>Nombre<input class="hb-in" id="p-n" maxlength="80" value="' + esc(draft.nombre) + '"></label>' +
       '<div class="row"><label>Latitud<input class="hb-in" id="p-la" inputmode="decimal" value="' + esc(draft.lat) + '"></label><label>Longitud<input class="hb-in" id="p-lo" inputmode="decimal" value="' + esc(draft.lng) + '"></label></div>' +
+      '<label>Enlace de Google Maps (compartir → copiar enlace)<input class="hb-in" id="p-gl" placeholder="https://maps.app.goo.gl/... o 13.69, -89.19" autocomplete="off"></label><div class="row"><button class="hb-btn ghost" id="p-gb" type="button">🗺️ Usar este enlace</button></div>' +
       '<div class="row"><button class="hb-btn ghost" id="p-map" type="button">📍 Elegir en el mapa</button><button class="hb-btn ghost" id="p-gps" type="button">🎯 Mi ubicación</button></div>' +
       '<label>Fechas de visita (AAAA-MM-DD, separadas por coma)<textarea class="hb-in" id="p-f" rows="2">' + esc(draft.fechas) + '</textarea></label>' +
       '<div class="row"><input class="hb-in" id="p-fd" type="date" aria-label="Añadir fecha"><button class="hb-btn ghost" id="p-fa" type="button">Añadir fecha</button></div>' +
@@ -757,6 +789,13 @@
       '<div class="row"><button class="hb-btn ghost" id="p-x" type="button">Cancelar</button><button class="hb-btn" id="p-g" type="button">Guardar</button></div>' + (draft.id ? '<button class="hb-btn danger" id="p-del" type="button">Borrar lugar</button>' : ''));
     const read = () => ({ id: draft.id, nombre: $('p-n').value.trim(), lat: $('p-la').value.trim(), lng: $('p-lo').value.trim(), fechas: $('p-f').value, nota: $('p-t').value.trim() });
     $('p-x').onclick = closeModal;
+    $('p-gb').onclick = async () => {
+      const v = $('p-gl').value.trim(); if (!v) { $('p-e').textContent = 'Pega primero el enlace.'; return; }
+      let c = parseCoords(v);
+      if (!c && /^https:\/\//.test(v)) { $('p-e').style.color = ''; $('p-e').textContent = 'Leyendo el enlace…'; const j = await adminPost('mapa_resolver', { url: v }); if (j.ok && j.lat != null) c = [String(j.lat), String(j.lng)]; else if (j.error === 'cancel') return; }
+      if (!c) { $('p-e').textContent = 'No pude sacar la ubicación de ese enlace. Prueba con otro enlace o escribe latitud y longitud.'; return; }
+      $('p-la').value = Number(c[0]).toFixed(6); $('p-lo').value = Number(c[1]).toFixed(6); $('p-e').style.color = '#9fe3a5'; $('p-e').textContent = 'Ubicación lista ✓'; setTimeout(() => { $('p-e').style.color = ''; }, 2500);
+    };
     $('p-fa').onclick = () => { const v = $('p-fd').value; if (isDate(v)) { $('p-f').value = ($('p-f').value.trim() ? $('p-f').value.trim() + ', ' : '') + v; $('p-fd').value = ''; } };
     $('p-map').onclick = () => { pick = { draft: read() }; closeModal(); lugaresTab = 'mapa'; selLugar = ''; vLugares(); };
     $('p-gps').onclick = () => { if (!navigator.geolocation) { $('p-e').textContent = 'Este dispositivo no permite ubicación.'; return; } navigator.geolocation.getCurrentPosition((pos) => { $('p-la').value = pos.coords.latitude.toFixed(6); $('p-lo').value = pos.coords.longitude.toFixed(6); }, () => { $('p-e').textContent = 'No se pudo obtener la ubicación.'; }); };
@@ -850,10 +889,9 @@
     $('ad-o').onclick = go; k.onkeydown = (e) => { if (e.key === 'Enter') go(); }; $('ad-c').onclick = closeModal;
   }
   function adminPanel() {
-    modal('<h3>🛠 Administrador</h3><p class="hb-small">Modo administrador activo. En cada sección verás los botones ✎ y ＋ para editar.</p><button class="hb-btn" id="ap-s" type="button">SOPORTE</button><button class="hb-btn" id="ap-c" type="button">📬 Correos (los dos)</button>' + (ss('hb_rol') === 'ella' ? '' : '<button class="hb-btn" id="ap-e" type="button">👩 Acceso de ella</button>') + '<button class="hb-btn ghost" id="ap-m" type="button">🗺️ Pines en el mapa: ' + (D.mapa_pines ? 'encendidos' : 'apagados') + '</button><button class="hb-btn ghost" id="ap-h" type="button">❔ Ayuda de bienvenida</button><button class="hb-btn ghost" id="ap-o" type="button">Salir del modo admin</button><button class="hb-btn ghost" id="ap-x" type="button">Cerrar</button>');
+    modal('<h3>🛠 Administrador</h3><p class="hb-small">Modo administrador activo. En cada sección verás los botones ✎ y ＋ para editar.</p><button class="hb-btn" id="ap-s" type="button">SOPORTE</button><button class="hb-btn" id="ap-c" type="button">📬 Correos (los dos)</button>' + (ss('hb_rol') === 'ella' ? '' : '<button class="hb-btn" id="ap-e" type="button">👩 Acceso de ella</button>') + '<button class="hb-btn ghost" id="ap-h" type="button">❔ Ayuda de bienvenida</button><button class="hb-btn ghost" id="ap-o" type="button">Salir del modo admin</button><button class="hb-btn ghost" id="ap-x" type="button">Cerrar</button>');
     $('ap-x').onclick = closeModal; $('ap-s').onclick = soporte;
     if ($('ap-e')) $('ap-e').onclick = accesoElla;
-    $('ap-m').onclick = async () => { const j = await adminPost('config_guardar', { mapa_pines: !D.mapa_pines }); if (j.ok) { await load(); toast('Pines del mapa ' + (D.mapa_pines ? 'encendidos' : 'apagados')); closeModal(); if (cur === 'lugares') rerender(); } else if (j.error !== 'cancel') toast(errTxt(j)); }; $('ap-c').onclick = adminCorreos; $('ap-h').onclick = () => { closeModal(); showHelp(); };
     $('ap-o').onclick = () => { admin = false; adminKey = ''; ssSet('hb_admin', ''); ssSet('hb_key', ''); ssSet('hb_rol', ''); document.body.classList.remove('hb-admin'); closeModal(); toast('Modo administrador apagado'); if (cur === 'pend') render(); };
   }
   async function accesoElla() {
