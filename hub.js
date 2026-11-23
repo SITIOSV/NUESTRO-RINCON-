@@ -694,7 +694,7 @@
     const ph = photos().filter((p) => p.lugar_id === l.id).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
     const fechas = placeDates(l);
     return '<h3>📍 ' + esc(l.nombre) + '</h3>' + (fechas.length ? '<p>' + fechas.map((f) => '<span class="hb-chip">' + fmtDate(f) + '</span>').join('') + '</p>' : '') + (l.nota ? '<p>' + esc(l.nota) + '</p>' : '') + (ph.length ? '<div class="hb-grid" style="margin-top:.5rem" id="pc-g">' + ph.slice(0, 12).map((p, i) => '<button class="hb-ph" type="button" data-i="' + i + '"><img loading="lazy" alt="" src="' + thumbSrc(p) + '"><span class="miss">Falta</span></button>').join('') + '</div><button class="hb-btn ghost" id="pc-all" type="button">🖼️ Ver todas las fotos de este lugar</button>' : '<p class="hb-small">Aún no hay fotos de este lugar.</p>') +
-      (isFinite(l.lat) && isFinite(l.lng) ? '<div class="row" style="margin-top:.5rem"><a class="hb-btn" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?api=1&query=' + l.lat + ',' + l.lng + '">🗺️ Abrir en Google Maps</a><a class="hb-btn ghost" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/dir/?api=1&destination=' + l.lat + ',' + l.lng + '">🧭 Cómo llegar</a></div>' : '') +
+      (!(isFinite(l.lat) && isFinite(l.lng) && Math.abs(l.lat) <= 90 && Math.abs(l.lng) <= 180) ? '<p class="hb-small">⚠️ Este lugar no tiene una ubicación válida. ' + (admin ? 'Toca ✎ Editar lugar y pega el enlace de Google Maps.' : '') + '</p>' : '<div class="row" style="margin-top:.5rem"><a class="hb-btn" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?api=1&query=' + l.lat + ',' + l.lng + '">🗺️ Abrir en Google Maps</a><a class="hb-btn ghost" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/dir/?api=1&destination=' + l.lat + ',' + l.lng + '">🧭 Cómo llegar</a></div>') +
       '<div style="margin-top:.4rem"><button class="hb-btn ghost hb-adm" id="pc-ed" type="button">✎ Editar lugar</button></div>';
   }
   function bindPlace(host, l) {
@@ -724,7 +724,7 @@
   let mapTok = 0, gmSat = false;
   /* Google Maps incrustado (sin clave): muestra el punto exacto del lugar elegido con su pin. */
   function gmapSrc(l, sat) {
-    const ok = l && isFinite(l.lat) && isFinite(l.lng);
+    const ok = l && isFinite(l.lat) && isFinite(l.lng) && Math.abs(l.lat) <= 90 && Math.abs(l.lng) <= 180;
     return 'https://www.google.com/maps?q=' + encodeURIComponent(ok ? l.lat + ',' + l.lng : 'El Salvador') + '&z=' + (ok ? 16 : 8) + '&hl=es&output=embed' + (sat ? '&t=k' : '');
   }
   /* Saca latitud y longitud de un enlace o texto de Google Maps. */
