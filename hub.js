@@ -179,7 +179,12 @@
     } catch (e) { return { ok: false, error: 'red' }; }
   }
   const errTxt = (j) => ERR[j && j.error] || 'No se pudo guardar. Revisa tu conexión.';
-  const toast = (t) => { const el = $('r12-toast'); if (!el) return; el.textContent = t; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2600); };
+  const toast = (t) => {
+    let el = $('r12-toast');
+    if (!el) { el = document.createElement('div'); el.id = 'r12-toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+    el.style.zIndex = '2147483100';          // por encima de cualquier ventana (modal de admin, visor, etc.)
+    el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 5000);
+  };
 
   /* ---------------- Navegación entre páginas ---------------- */
   const PAGES = [['home', 'index.html', '🏠', 'Inicio'], ['regalo', 'regalo.html', '🎁', 'Regalo y calendario'], ['lugares', 'lugares.html', '📍', 'Lugares visitados'], ['fotos', 'fotos.html', '🖼️', 'Fotos'], ['fechas', 'fechas.html', '📅', 'Fechas importantes'], ['cartas', 'cartas.html', '✉️', 'Cartas diarias'], ['linea', 'linea.html', '⏳', 'Línea de tiempo'], ['favoritos', 'favoritos.html', '♥', 'Favoritos'], ['pend', 'pendientes.html', '📥', 'Pendientes', 'adm']];
