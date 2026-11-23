@@ -84,10 +84,13 @@
       return await res.json();
     } finally { clearTimeout(to); }
   }
+  /* Repara coordenadas a las que la hoja les quitó el punto decimal (13507507 -> 13.507507) y evita que "vacío" cuente como 0. */
+  const fixC = (v, max) => { if (v === null || v === '' || v === undefined) return NaN; let n = Number(v); if (!isFinite(n)) return NaN; let g = 0; while (Math.abs(n) > max && g++ < 12) n /= 10; return Math.round(n * 1e7) / 1e7; };
+  const normLugares = () => { D.lugares = (D.lugares || []).map((l) => Object.assign({}, l, { lat: fixC(l.lat, 90), lng: fixC(l.lng, 180) })); };
   async function load() {
     try {
       const j = await api('GET', { action: 'hub' });
-      if (j && j.ok === true && Array.isArray(j.fotos)) { D = Object.assign({}, D0, j); loaded = true; offline = false; try { localStorage.setItem(LS, JSON.stringify(j)); } catch (e) {} }
+      if (j && j.ok === true && Array.isArray(j.fotos)) { D = Object.assign({}, D0, j); normLugares(); loaded = true; offline = false; try { localStorage.setItem(LS, JSON.stringify(j)); } catch (e) {} }
       else offline = true;
     } catch (e) { offline = true; }
   }
