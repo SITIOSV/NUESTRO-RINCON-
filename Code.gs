@@ -371,6 +371,31 @@ function filas_(nombre) {
   if (sh.getLastRow() < 2) return [];
   return sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getDisplayValues();
 }
+/** Convierte a número una coordenada que puede venir como número, "13.49" o "13,49" (hoja con configuración regional en español). */
+function coord_(v, max) {
+  var n;
+  if (typeof v === 'number') n = v;
+  else {
+    var t = String(v == null ? '' : v).trim().replace(/\s/g, '');
+    if (t === '') return NaN;
+    if (/^-?\d+,\d+$/.test(t)) t = t.replace(',', '.');          // 13,49 -> 13.49
+    else t = t.replace(/,/g, '');                                  // 1,234.5 -> 1234.5
+    n = Number(t);
+  }
+  if (!isFinite(n)) return NaN;
+  // Sheets en español puede quitar el punto decimal (13.507507 -> 13507507): se repone dividiendo hasta entrar en rango.
+  if (max) { var g = 0; while (Math.abs(n) > max && g++ < 12) n = n / 10; }
+  return Math.round(n * 1e7) / 1e7;
+}
+/** Filas de LUGARES con latitud y longitud leídas como valores reales. */
+function filasLugares_() {
+  var sh = hoja_(HOJA_LUGARES);
+  if (sh.getLastRow() < 2) return [];
+  var n = sh.getLastRow() - 1, cols = sh.getLastColumn();
+  var vis = sh.getRange(2, 1, n, cols).getDisplayValues(), raw = sh.getRange(2, 3, n, 2).getValues();
+  for (var i = 0; i < n; i++) { vis[i][2] = coord_(raw[i][0], 90); vis[i][3] = coord_(raw[i][1], 180); }
+  return vis;
+}
 function texto_(v, max) { return String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max); }
 function fechaOk_(f) { return /^\d{4}-\d{2}-\d{2}$/.test(f) && !isNaN(new Date(f + 'T00:00:00Z').getTime()); }
 function archivoOk_(a) { return /^[\w\-. ()]{1,80}$/.test(a) && a.indexOf('..') < 0; }
@@ -385,8 +410,8 @@ function hubPublico_() {
     ok: true,
     fecha_inicio: String(cfg.fecha_inicio || ''),
     categorias: filas_(HOJA_CATEGORIAS).map(function (r) { return r[0]; }).filter(String),
-    lugares: filas_(HOJA_LUGARES).filter(function (r) { return r[0]; }).map(function (r) {
-      return { id: r[0], nombre: r[1], lat: Number(r[2]), lng: Number(r[3]), fechas: String(r[4]).split(',').map(function (x) { return x.trim(); }).filter(String), nota: r[5] };
+    lugares: filasLugares_().filter(function (r) { return r[0]; }).map(function (r) {
+      return { id: r[0], nombre: r[1], lat: r[2], lng: r[3], fechas: String(r[4]).split(',').map(function (x) { return x.trim(); }).filter(String), nota: r[5] };
     }),
     fotos: filas_(HOJA_FOTOS).filter(function (r) { return r[0]; }).map(function (r) {
       return { archivo: r[0], lugar_id: r[1], fecha: r[2], categorias: String(r[3]).split(',').map(function (x) { return x.trim(); }).filter(String), nota: r[4], miniatura: r[5] || '' };
@@ -401,7 +426,6 @@ function hubPublico_() {
     }),
     aniversarios_correo: esVerdadero_(cfg.aniversarios_correo),
     correo_enlace: esVerdadero_(cfg.correo_enlace),
-    mapa_pines: esVerdadero_(cfg.mapa_pines),
     correo_ella_edita: cfg.correo_ella_edita === undefined ? true : esVerdadero_(cfg.correo_ella_edita),
     dias_antes: Number(cfg.dias_antes) || 1
   };
@@ -450,6 +474,164 @@ function ellaAdminSet_(d) {
   }
   return { ok: true };
 }
+
+/** Saca [lat, lng] de un enlace de Google Maps (o null). */
+function coordsDeUrl_(u) {
+  var t = String(u || ''); try { t = decodeURIComponent(t.replace(/\+/g, ' ')); } catch (e) {}
+  var m = /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/.exec(t) || /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/.exec(t) || /[?&](?:q|ll|query|destination|center)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/.exec(t);
+  if (!m) m = /\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/.exec(t);
+  return m ? [Number(m[1]), Number(m[2])] : null;
+}
+function hostMapasOk_(u) {
+  var m = /^https:\/\/([a-z0-9.\-]+)(\/[^\s]*)?$/i.exec(String(u || ''));
+  if (!m) return false;
+  var h = m[1].toLowerCase(), path = m[2] || '/';
+  if (h === 'maps.app.goo.gl') return true;
+  if (h === 'goo.gl') return /^\/maps/.test(path);
+  if (h === 'maps.google.com') return true;
+  return (h === 'www.google.com' || h === 'google.com') && /^\/maps/.test(path);
+}
+/** Sigue (con límite) las redirecciones de un enlace corto de Google Maps y devuelve las coordenadas. Solo hosts de Google. */
+function mapaResolver_(d) {
+  var url = String(d.url || '').trim().slice(0, 500);
+  if (!hostMapasOk_(url)) return { ok: false, error: 'datos' };
+  if (!limitar_('mapa_res', 40, 3600)) return { ok: false, error: 'limite' };
+  for (var i = 0; i < 6; i++) {
+    var c = coordsDeUrl_(url); if (c) return { ok: true, lat: c[0], lng: c[1] };
+    var r; try { r = UrlFetchApp.fetch(url, { followRedirects: false, muteHttpExceptions: true, headers: { 'Accept-Language': 'es', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36' } }); } catch (x) { return { ok: false, error: 'datos' }; }
+    var code = r.getResponseCode(), h = r.getHeaders(), loc = h.Location || h.location;
+    if (code >= 300 && code < 400 && loc) { url = String(loc); if (!hostMapasOk_(url)) { var c2 = coordsDeUrl_(url); return c2 ? { ok: true, lat: c2[0], lng: c2[1] } : { ok: false, error: 'datos' }; } continue; }
+    var c3 = coordsDeUrl_(r.getContentText().slice(0, 60000)); return c3 ? { ok: true, lat: c3[0], lng: c3[1] } : { ok: false, error: 'datos' };
+  }
+  return { ok: false, error: 'datos' };
+}
+
+var ACCIONES_HUB_ADMIN = { foto_guardar: 1, lugar_guardar: 1, lugar_borrar: 1, categoria_agregar: 1, config_guardar: 1,
+  fecha_guardar: 1, fecha_borrar: 1, correos_guardar: 1, correos_leer: 1, correo_prueba: 1, recordatorios_activar: 1,
+  carta_guardar: 1, carta_leer: 1, cartas_importar: 1, pend_listar: 1, pend_aprobar: 1, pend_rechazar: 1, foto_drive_admin: 1, foto_subir: 1, foto_borrar: 1, ella_admin_leer: 1, ella_admin_set: 1, mapa_resolver: 1 };
+var ACCIONES_HUB_PUBLICAS = { fav: 1, correo_set: 1, pend_nota: 1, pend_foto: 1 };
+
+/** Devuelve la respuesta si la acción es del hub; null si no lo es. */
+function hubPost_(accion, d) {
+  if (!ACCIONES_HUB_PUBLICAS[accion] && !ACCIONES_HUB_ADMIN[accion]) return null;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(8000)) return { ok: false, error: 'ocupado' };
+  try {
+    if (accion === 'fav') return favorito_(d);
+    if (accion === 'correo_set') return correoSet_(d);
+    if (accion === 'pend_nota' || accion === 'pend_foto') return pendienteNuevo_(accion, d);
+    var no = autorizarAdmin_(accion, String(d.clave || ''));
+    if (no) return no;
+    var r;
+    if (accion === 'foto_guardar') r = fotoGuardar_(d);
+    else if (accion === 'lugar_guardar') r = lugarGuardar_(d);
+    else if (accion === 'lugar_borrar') r = lugarBorrar_(d);
+    else if (accion === 'categoria_agregar') r = categoriaAgregar_(d);
+    else if (accion === 'fecha_guardar') r = fechaGuardar_(d);
+    else if (accion === 'fecha_borrar') r = borrarFila_(HOJA_FECHAS, d.id);
+    else if (accion === 'correos_guardar') r = correosGuardar_(d);
+    else if (accion === 'correos_leer') r = { ok: true, correos: correos_(), estado: estadoCorreos_() };
+    else if (accion === 'correo_prueba') r = correoPrueba_(d);
+    else if (accion === 'recordatorios_activar') r = instalarTrigger_();
+    else if (accion === 'carta_guardar') r = cartaGuardar_(d);
+    else if (accion === 'carta_leer') r = cartaLeer_(d);
+    else if (accion === 'cartas_importar') r = cartasImportar_(d);
+    else if (accion === 'pend_listar') r = pendListar_();
+    else if (accion === 'pend_aprobar') r = pendAprobar_(d);
+    else if (accion === 'pend_rechazar') r = pendRechazar_(d);
+    else if (accion === 'foto_drive_admin') r = fotoDrive_(String(d.id || ''), true);
+    else if (accion === 'foto_subir') r = fotoSubir_(d);
+    else if (accion === 'foto_borrar') r = fotoBorrar_(d);
+    else if (accion === 'mapa_resolver') r = mapaResolver_(d);
+    else if (accion === 'ella_admin_leer') r = ellaAdminLeer_();
+    else if (accion === 'ella_admin_set') r = ellaAdminSet_(d);
+    else r = configGuardar_(d);
+    if (r && r.ok) { CacheService.getScriptCache().remove('hub_v1'); registrar_(accion, 'OK'); }
+    return r;
+  } finally { lock.releaseLock(); }
+}
+
+/** Favoritos: los puede marcar ella sin clave (solo sobre fotos que existan). */
+function favorito_(d) {
+  var tipo = d.tipo === 'carta' ? 'carta' : 'foto';
+  var archivo = texto_(tipo === 'carta' ? d.fecha : d.archivo, 80);
+  if (tipo === 'carta' ? !fechaOk_(archivo) : !archivoOk_(archivo)) return { ok: false, error: 'datos' };
+  var sh = hoja_(HOJA_FAVORITOS), v = sh.getDataRange().getValues(), fila = -1;
+  for (var i = 1; i < v.length; i++) if (v[i][0] === tipo && String(v[i][1]) === archivo) { fila = i + 1; break; }
+  if (d.on === false) { if (fila > 0) sh.deleteRow(fila); }
+  else if (fila < 0) {
+    if (v.length > MAX_FAVORITOS) return { ok: false, error: 'limite' };
+    sh.appendRow([tipo, archivo, marca_()]);
+  }
+  CacheService.getScriptCache().remove('hub_v1');
+  return { ok: true };
+}
+
+function fotoGuardar_(d) {
+  var archivo = texto_(d.archivo, 80);
+  if (!archivoOk_(archivo)) return { ok: false, error: 'datos' };
+  var fecha = texto_(d.fecha, 10);
+  if (fecha && !fechaOk_(fecha)) return { ok: false, error: 'fecha' };
+  var cats = (Array.isArray(d.categorias) ? d.categorias : []).map(function (c) { return texto_(c, 30).replace(/,/g, ''); }).filter(String).slice(0, 8).join(', ');
+  var fila = [archivo, texto_(d.lugar_id, 40), fecha, cats, texto_(d.nota, 300)];
+  var sh = hoja_(HOJA_FOTOS), v = sh.getDataRange().getValues();
+  for (var i = 1; i < v.length; i++) if (String(v[i][0]) === archivo) { sh.getRange(i + 1, 1, 1, 5).setValues([fila]); return { ok: true }; }
+  sh.appendRow(fila);
+  return { ok: true };
+}
+
+function lugarGuardar_(d) {
+  var nombre = texto_(d.nombre, 80);
+  var lat = Number(d.lat), lng = Number(d.lng);
+  if (!nombre || !isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return { ok: false, error: 'datos' };
+  var fechas = (Array.isArray(d.fechas) ? d.fechas : []).map(function (f) { return texto_(f, 10); });
+  for (var k = 0; k < fechas.length; k++) if (!fechaOk_(fechas[k])) return { ok: false, error: 'fecha' };
+  var sh = hoja_(HOJA_LUGARES), v = sh.getDataRange().getValues();
+  var id = texto_(d.id, 40);
+  if (id && !/^[\w\-]+$/.test(id)) return { ok: false, error: 'datos' };
+  if (!id) id = 'l' + new Date().getTime().toString(36);
+  var fila = [id, nombre, String(lat), String(lng), fechas.slice(0, 60).join(', '), texto_(d.nota, 300)];
+  sh.getRange(1, 3, Math.max(sh.getMaxRows(), 2), 2).setNumberFormat('@');   // lat/lng como texto: no se mezclan con el idioma de la hoja
+  for (var i = 1; i < v.length; i++) if (String(v[i][0]) === id) { sh.getRange(i + 1, 1, 1, 6).setValues([fila]); return { ok: true, id: id }; }
+  sh.getRange(sh.getLastRow() + 1, 1, 1, 6).setValues([fila]);
+  return { ok: true, id: id };
+}
+
+function lugarBorrar_(d) {
+  var id = texto_(d.id, 40);
+  var sh = hoja_(HOJA_LUGARES), v = sh.getDataRange().getValues();
+  for (var i = 1; i < v.length; i++) if (String(v[i][0]) === id) {
+    sh.deleteRow(i + 1);
+    // las fotos de ese lugar quedan sin lugar (pasan a "sin clasificar")
+    var f = hoja_(HOJA_FOTOS), fv = f.getDataRange().getValues();
+    for (var j = 1; j < fv.length; j++) if (String(fv[j][1]) === id) f.getRange(j + 1, 2).setValue('');
+    return { ok: true };
+  }
+  return { ok: false, error: 'datos' };
+}
+
+function categoriaAgregar_(d) {
+  var n = texto_(d.nombre, 30).replace(/,/g, '').toLowerCase();
+  if (!n) return { ok: false, error: 'datos' };
+  var sh = hoja_(HOJA_CATEGORIAS), v = sh.getDataRange().getValues();
+  for (var i = 1; i < v.length; i++) if (String(v[i][0]).toLowerCase() === n) return { ok: true };
+  sh.appendRow([n]);
+  return { ok: true };
+}
+
+function configGuardar_(d) {
+  if ('fecha_inicio' in d) {
+    var f = texto_(d.fecha_inicio, 10);
+    if (f && !fechaOk_(f)) return { ok: false, error: 'fecha' };
+    escribirConfig_('fecha_inicio', f);
+  }
+  if ('aniversarios_correo' in d) escribirConfig_('aniversarios_correo', d.aniversarios_correo ? 'TRUE' : 'FALSE');
+  if ('correo_ella_edita' in d) escribirConfig_('correo_ella_edita', d.correo_ella_edita ? 'TRUE' : 'FALSE');
+  if ('correo_enlace' in d) escribirConfig_('correo_enlace', d.correo_enlace ? 'TRUE' : 'FALSE');
+  if ('dias_antes' in d) { var n = Math.round(Number(d.dias_antes)); if (!(n >= 0 && n <= 30)) return { ok: false, error: 'datos' }; escribirConfig_('dias_antes', String(n)); }
+  return { ok: true };
+}
+
 
 // ============================ FASE 2 ============================
 
@@ -555,7 +737,7 @@ function correoSet_(d) {
   return { ok: true };
 }
 var SITIO_URL = 'https://sitiosv.github.io/NUESTRO-RINCON-/';
-// Enlace que va en los correos: apunta a Google (script.google.com), que Gmail no bloquea, y esa página abre el sitio.
+// Enlace de los correos: apunta a Google (script.google.com), que Gmail no bloquea; esa página abre el sitio.
 var ENLACE_CORREO = 'https://script.google.com/macros/s/AKfycbzim9NIUvePX36k1ejl9iBMWE8pl_A9PJi4XyF6OlsGNWv8XNpnMDrqFRkb0utQ9dxhPg/exec?action=ir';
 function enlaceCorreo_() {
   try { return esVerdadero_(leerConfig_().correo_enlace) ? ENLACE_CORREO : ''; } catch (e) { return ''; }
@@ -564,7 +746,7 @@ function sitioUrl_() {
   var u = SITIO_URL; try { var cu = leerConfig_().sitio_url; if (cu && /^https:\/\//.test(String(cu))) u = String(cu); } catch (e) {}
   return u;
 }
-/** Página puente: se muestra un botón que abre el sitio real. */
+/** Página puente: muestra un botón que abre el sitio real. */
 function irAlSitio_() {
   var u = sitioUrl_();
   var h = '<!doctype html><html lang="es"><head><base target="_top"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nuestro Rincón</title></head>' +
@@ -609,7 +791,7 @@ function correoHtml_(o) {
     '<div style="text-align:center;font:italic 15px ' + f + ';color:' + ROSA + ';margin-top:18px">Te amo, mi reina &hearts;</div>' +
     '</td></tr></table></td></tr></table>' +
     '<div style="font:12px ' + f + ';color:#d9b8c4;margin-top:18px;line-height:1.6">Un aviso hecho con mucho cariño desde <b style="color:' + ORO + '">Nuestro Rincón</b>' +
-    '' + '</div>' +
+    '</div>' +
     '<div style="font:16px ' + f + ';color:' + ROSA + ';letter-spacing:8px;margin-top:10px">&hearts; &hearts; &hearts;</div>' +
     '</td></tr></table></body></html>';
 }
