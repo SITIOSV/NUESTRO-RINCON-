@@ -365,7 +365,7 @@
   }
 
   /* ---------------- CARTAS DIARIAS 2027 ---------------- */
-  let CD = { ok: false, hoy: '', inicio: '2027-01-01', fin: '2027-12-31', disponibles: [] };
+  let CD = { ok: false, hoy: '', inicio: '2026-12-13', fin: '2027-12-31', disponibles: [] };
   try { const c = JSON.parse(localStorage.getItem('hub_cartas_idx') || 'null'); if (c && Array.isArray(c.disponibles)) CD = Object.assign(CD, c, { ok: false }); } catch (e) {}
   async function loadCartas() {
     try { const j = await api('GET', { action: 'cartas_dias' }); if (j && j.ok === true && Array.isArray(j.disponibles)) { CD = Object.assign({}, j, { ok: true }); try { localStorage.setItem('hub_cartas_idx', JSON.stringify(j)); } catch (e) {} } } catch (e) {}
