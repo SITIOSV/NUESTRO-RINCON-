@@ -163,3 +163,47 @@ body.hb-admin .hb-adm { display: inline-flex !important; } .hb-adm { display: no
 #hb-modal .mc-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; font-size: .82rem; }
 #hb-modal .mc-l small { display: block; color: rgba(255,245,233,.65); font-size: .72rem; }
 #hb-modal button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ================= v14 · tokens, estados vacíos, temas, barra inferior, accesibilidad ================= */
+:root { --sp1: .4rem; --sp2: .8rem; --sp3: 1.2rem; --rad: 14px; --tab-h: 62px; --accent: var(--gold); --accent-soft: var(--gold-light); --bg-glow: rgba(212,175,55,.08); }
+html[data-tema="navidad"] { --accent: #e8c25a; --accent-soft: #f4e3a8; --passion-red: #c8102e; --bg-glow: rgba(46,125,50,.14); }
+html[data-tema="sanvalentin"] { --accent: #ff6f91; --accent-soft: #ffc2d1; --passion-red: #ff2e63; --bg-glow: rgba(255,46,99,.14); }
+html[data-tema="doce"] { --accent: #f2c14e; --accent-soft: #fff0c2; --passion-red: #b0123a; --bg-glow: rgba(242,193,78,.16); }
+html[data-tema="navidad"] .hb-card, html[data-tema="sanvalentin"] .hb-card, html[data-tema="doce"] .hb-card { box-shadow: 0 0 0 1px var(--bg-glow), 0 8px 28px var(--bg-glow); }
+html[data-tema="navidad"] .hb-head h2::after { content: " 🎄"; } html[data-tema="sanvalentin"] .hb-head h2::after { content: " 💘"; } html[data-tema="doce"] .hb-head h2::after { content: " 🎁"; }
+.hb-card { border-radius: var(--rad); }
+.hb-btn:focus-visible, .hb-tab:focus-visible, .hb-item:focus-visible, .hb-ib:focus-visible, .hb-chk:focus-visible, #hb-tabbar a:focus-visible, #hb-tabbar button:focus-visible, .hb-in:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+html.alto { --ivory: #fff; } html.alto .hb-small, html.alto small { opacity: 1 !important; color: #fff !important; } html.alto .hb-card, html.alto .hb-item { border-color: var(--accent) !important; }
+html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+.hb-card, .hb-item { content-visibility: auto; contain-intrinsic-size: auto 120px; }
+
+/* estados vacíos y carga */
+.hb-empty { text-align: center; padding: 2rem 1rem; color: var(--ivory); } .hb-empty .ei { font-size: 2.6rem; margin-bottom: .4rem; opacity: .9; } .hb-empty b { display: block; font: 600 1.25rem 'Cormorant Garamond', serif; color: var(--accent-soft); } .hb-empty p { opacity: .8; font-size: .85rem; margin-top: .3rem; }
+.hb-skel { height: 84px; border-radius: var(--rad); margin-bottom: .7rem; background: linear-gradient(100deg, rgba(255,255,255,.04) 30%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.04) 70%); background-size: 220% 100%; animation: skel 1.4s linear infinite; } .hb-skel.s2 { height: 120px; } .hb-skel.s3 { height: 64px; }
+@keyframes skel { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+/* metas, progreso, retrospectiva, historia */
+.hb-prog { height: 10px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: .5rem; } .hb-prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--passion-red)); transition: width .6s var(--ease-cine, ease); }
+.hb-meta { display: flex; align-items: center; gap: .7rem; padding: .7rem .8rem; border-radius: var(--rad); border: 1px solid rgba(212,175,55,.25); margin-bottom: .5rem; background: rgba(255,255,255,.03); } .hb-meta > div { flex: 1; min-width: 0; } .hb-meta small { display: block; opacity: .75; font-size: .75rem; }
+.hb-meta.on b { text-decoration: line-through; opacity: .7; }
+.hb-chk { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--accent); background: transparent; color: #12060d; font-weight: 700; cursor: pointer; } .hb-meta.on .hb-chk { background: var(--accent); }
+.hb-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; margin-bottom: .8rem; } .hb-tile { padding: .9rem; border-radius: var(--rad); border: 1px solid rgba(212,175,55,.3); text-align: center; background: rgba(255,255,255,.03); } .hb-tile span { font-size: .75rem; opacity: .8; }
+.hb-hist { margin-bottom: 1.2rem; padding-left: .8rem; border-left: 2px solid var(--accent); } .hb-hist h3 { font: 600 1.3rem 'Cormorant Garamond', serif; color: var(--accent-soft); margin-bottom: .3rem; }
+.hb-item.sw small b { color: var(--accent-soft); } .hb-item.sw.on { border-color: var(--accent); background: rgba(212,175,55,.12); }
+.hb-item.st-ok { border-left: 3px solid #5fbf6a; } .hb-item.st-warn { border-left: 3px solid #e0b43a; } .hb-item.st-bad { border-left: 3px solid #e0524a; } .hb-item.st-info { border-left: 3px solid #6aa7d9; }
+.hb-item a.hb-btn, .hb-item button.hb-btn { margin-top: .4rem; margin-right: .3rem; }
+
+/* efecto de temporada (copos / corazones) */
+#hb-fx { position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; } #hb-fx i { position: absolute; top: -8%; color: rgba(255,255,255,.55); font-style: normal; animation: fx linear infinite; } html[data-tema="sanvalentin"] #hb-fx i { color: rgba(255,70,110,.5); }
+@keyframes fx { from { transform: translateY(-5vh) rotate(0); } to { transform: translateY(112vh) rotate(300deg); } }
+
+/* barra inferior (móvil) */
+#hb-tabbar { display: none; }
+@media (max-width: 760px) {
+  body.hb-bar #hb-tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 26; height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); background: rgba(18,6,13,.96); border-top: 1px solid rgba(212,175,55,.35); backdrop-filter: blur(8px); }
+  #hb-tabbar a, #hb-tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 500 .66rem 'Montserrat', sans-serif; color: var(--ivory); text-decoration: none; background: none; border: 0; cursor: pointer; opacity: .75; }
+  #hb-tabbar span { font-size: 1.25rem; line-height: 1; } #hb-tabbar .cur { opacity: 1; color: var(--accent-soft); box-shadow: inset 0 2px 0 var(--accent); }
+  body.hb-bar #hb-view { padding-bottom: calc(var(--tab-h) + 1rem + env(safe-area-inset-bottom, 0px)); }
+  body.hb-bar #r12-toast { bottom: calc(var(--tab-h) + 14px + env(safe-area-inset-bottom, 0px)); }
+}
+.hb-card > small, .hb-item > small { display: block; opacity: .75; font-size: .78rem; }

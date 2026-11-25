@@ -9,7 +9,7 @@
   ===================================================================== */
   const FOTOS_DIR = 'fotos/';
   const FOTOS_ARCHIVOS = ``;   // ej.: foto1.jpg, foto2.png, foto3.jpg
-  const HOME_ORDER = ['cartas', 'fechas', 'juntos', 'aniversarios'];   // orden de importancia en Inicio
+  const HOME_ORDER = ['sorpresa', 'cartas', 'musica', 'fechas', 'juntos', 'aniversarios', 'capsula'];   // orden de importancia en Inicio
   const URL_API = 'https://script.google.com/macros/s/AKfycbzim9NIUvePX36k1ejl9iBMWE8pl_A9PJi4XyF6OlsGNWv8XNpnMDrqFRkb0utQ9dxhPg/exec';
   const TZ_OFF = -6 * 3600 * 1000;      // America/El_Salvador (sin horario de verano)
   const LS = 'hub_v1';
@@ -30,7 +30,7 @@
   const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 
   /* ---------------- Datos ---------------- */
-  const D0 = { fecha_inicio: '', categorias: [], lugares: [], fotos: [], favoritos: [], favoritos_cartas: [], fechas: [], notas: [], aniversarios_correo: true, correo_ella_edita: true, dias_antes: 1 };
+  const D0 = { fecha_inicio: '', categorias: [], lugares: [], fotos: [], favoritos: [], favoritos_cartas: [], fechas: [], notas: [], aniversarios_correo: true, habilitado_12: false, correo_ella_edita: true, dias_antes: 1, fn: {}, metas: [], capsulas: [], canciones: [], tema: 'auto', correo_tema: 'oscuro', carta_correo_a: 'ella' };
   let D = Object.assign({}, D0);
   let loaded = false, offline = false;
   try { const c = JSON.parse(localStorage.getItem(LS) || 'null'); if (c && c.ok) { D = Object.assign({}, D0, c); } } catch (e) {}
@@ -64,8 +64,8 @@
   let hyT = null; const queueHydrate = () => { clearTimeout(hyT); hyT = setTimeout(hydrate, 120); };
 
   /* Textos del modal de carga según la acción (todo lo que el usuario inicia bloquea la pantalla con un mensaje). */
-  const BUSY_TXT = { admin_entrar: 'Verificando la clave…', correo_set: 'Guardando tu correo…', correos_leer: 'Leyendo los correos…', correos_guardar: 'Guardando correos…', correo_prueba: 'Enviando el correo de prueba…', ella_admin_leer: 'Leyendo…', mapa_resolver: 'Leyendo el enlace de Google Maps…', ella_admin_set: 'Guardando…', recordatorios_activar: 'Activando los avisos diarios…', config_guardar: 'Guardando…', foto_subir: 'Subiendo la foto… no cierres la página', foto_guardar: 'Guardando la foto…', foto_borrar: 'Borrando la foto…', foto_drive_admin: 'Cargando la foto…', lugar_guardar: 'Guardando el lugar…', lugar_borrar: 'Borrando el lugar…', categoria_agregar: 'Agregando la categoría…', fecha_guardar: 'Guardando la fecha…', fecha_borrar: 'Borrando la fecha…', carta_leer: 'Abriendo la carta…', carta_guardar: 'Guardando la carta…', cartas_importar: 'Importando cartas…', carta_dia: 'Abriendo tu carta…', pend_listar: 'Buscando pendientes…', pend_aprobar: 'Aprobando…', pend_rechazar: 'Rechazando…', pend_nota: 'Enviando tu recuerdo…', pend_foto: 'Enviando tu foto…', bloqueo_set: 'Aplicando el bloqueo…', start_site: 'Reactivando el sitio…', stop_site: 'Bloqueando el sitio…', estado: 'Leyendo el estado…' };
-  const QUIET = { fav: 1, foto_drive: 1 };            // se pintan al instante o van en segundo plano
+  const BUSY_TXT = { admin_entrar: 'Verificando la clave…', correo_set: 'Guardando tu correo…', correos_leer: 'Leyendo los correos…', correos_guardar: 'Guardando correos…', correo_prueba: 'Enviando el correo de prueba…', ella_admin_leer: 'Leyendo…', mapa_resolver: 'Leyendo el enlace de Google Maps…', sorpresa_set: 'Cambiando la sorpresa del 12…', ella_admin_set: 'Guardando…', recordatorios_activar: 'Activando los avisos diarios…', config_guardar: 'Guardando…', foto_subir: 'Subiendo la foto… no cierres la página', foto_guardar: 'Guardando la foto…', foto_borrar: 'Borrando la foto…', foto_drive_admin: 'Cargando la foto…', lugar_guardar: 'Guardando el lugar…', lugar_borrar: 'Borrando el lugar…', categoria_agregar: 'Agregando la categoría…', fecha_guardar: 'Guardando la fecha…', fecha_borrar: 'Borrando la fecha…', carta_leer: 'Abriendo la carta…', carta_guardar: 'Guardando la carta…', cartas_importar: 'Importando cartas…', carta_dia: 'Abriendo tu carta…', pend_listar: 'Buscando pendientes…', pend_aprobar: 'Aprobando…', pend_rechazar: 'Rechazando…', pend_nota: 'Enviando tu recuerdo…', pend_foto: 'Enviando tu foto…', bloqueo_set: 'Aplicando el bloqueo…', start_site: 'Reactivando el sitio…', stop_site: 'Bloqueando el sitio…', estado: 'Leyendo el estado…', sistema_estado: 'Revisando el sistema…', sistema_reparar: 'Reparando datos…', carta_correo_prueba: 'Enviando la prueba…', meta_guardar: 'Guardando la meta…', meta_borrar: 'Borrando…', capsula_borrar: 'Borrando…', cancion_guardar: 'Guardando la canción…', cancion_borrar: 'Borrando…', aniv_guardar: 'Guardando…' };
+  const QUIET = { fav: 1, foto_drive: 1, meta_toggle: 1 };            // se pintan al instante o van en segundo plano
   const BUSY_GET = { carta_dia: 1 };                  // lecturas que sí inicia el usuario con un clic
   async function api(method, params, body, opt) {
     const act = (body && body.action) || (params && params.action) || '';
@@ -187,11 +187,12 @@
   };
 
   /* ---------------- Navegación entre páginas ---------------- */
-  const PAGES = [['home', 'index.html', '🏠', 'Inicio'], ['regalo', 'regalo.html', '🎁', 'Regalo y calendario'], ['lugares', 'lugares.html', '📍', 'Lugares visitados'], ['fotos', 'fotos.html', '🖼️', 'Fotos'], ['fechas', 'fechas.html', '📅', 'Fechas importantes'], ['cartas', 'cartas.html', '✉️', 'Cartas diarias'], ['linea', 'linea.html', '⏳', 'Línea de tiempo'], ['favoritos', 'favoritos.html', '♥', 'Favoritos'], ['pend', 'pendientes.html', '📥', 'Pendientes', 'adm']];
+  const PAGES = [['home', 'index.html', '🏠', 'Inicio'], ['regalo', 'regalo.html', '🎁', 'Regalo y calendario'], ['lugares', 'lugares.html', '📍', 'Lugares visitados'], ['fotos', 'fotos.html', '🖼️', 'Fotos'], ['fechas', 'fechas.html', '📅', 'Fechas importantes'], ['cartas', 'cartas.html', '✉️', 'Cartas diarias'], ['linea', 'linea.html', '⏳', 'Línea de tiempo'], ['favoritos', 'favoritos.html', '♥', 'Favoritos'], ['metas', 'metas.html', '🌟', 'Sueños y metas', 0, 'metas'], ['capsulas', 'capsulas.html', '📮', 'Cápsulas del tiempo', 0, 'capsulas'], ['musica', 'musica.html', '🎵', 'Música', 0, 'musica'], ['retro', 'retro.html', '✨', 'Retrospectiva', 0, 'retro'], ['pend', 'pendientes.html', '📥', 'Pendientes', 'adm']];
   const pageUrl = (n) => (PAGES.find((x) => x[0] === n) || PAGES[0])[1];
   function buildNav() {
-    $('hb-nav').innerHTML = PAGES.map((p) => '<a href="' + p[1] + '" class="' + (p[4] ? 'adm-only ' : '') + (p[0] === PAGE ? 'cur' : '') + '"><span>' + p[2] + '</span>' + p[3] + '</a>').join('') + '<a role="button" tabindex="0" id="hb-nav-help"><span>🛠</span>Admin</a>';
+    $('hb-nav').innerHTML = PAGES.filter(featOn).map((p) => '<a href="' + p[1] + '" class="' + (p[4] ? 'adm-only ' : '') + (p[0] === PAGE ? 'cur' : '') + '"><span>' + p[2] + '</span>' + p[3] + '</a>').join('') + (FN().temas ? '<a role="button" tabindex="0" id="hb-nav-look"><span>🎨</span>Apariencia</a>' : '') + '<a role="button" tabindex="0" id="hb-nav-help"><span>🛠</span>Admin</a>';
     const h = $('hb-nav-help'), go = () => onAdminMenu();
+    const lk = $('hb-nav-look'); if (lk) { lk.addEventListener('click', () => { toggleNav(false); aparienciaPanel(); }); lk.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNav(false); aparienciaPanel(); } }); }
     h.addEventListener('click', go); h.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   }
   function toggleNav(on) { $('hb-nav').classList.toggle('on', on); $('hb-scrim').classList.toggle('on', on); $('hb-burger').setAttribute('aria-expanded', on ? 'true' : 'false'); }
@@ -209,16 +210,24 @@
     const s = PAGES.find((x) => x[0] === cur); $('hb-title').textContent = s ? s[3] : 'Inicio';
     document.title = (s ? s[3] + ' · ' : '') + 'Nuestro rincón';
     const v = view(); v.innerHTML = '<div class="hb-wrap" id="hb-w"></div>';
-    ({ home: vHome, lugares: vLugares, fotos: vFotos, fechas: vFechas, cartas: vCartas, linea: vLinea, favoritos: vFavoritos, pend: vPend })[cur]();
+    if (s && s[5] && !FN()[s[5]]) w0Off(); else ({ home: vHome, lugares: vLugares, fotos: vFotos, fechas: vFechas, cartas: vCartas, linea: vLinea, favoritos: vFavoritos, metas: vMetas, capsulas: vCapsulas, musica: vMusica, retro: vRetro, pend: vPend })[cur]();
     v.scrollTop = 0;
   }
   const W = () => $('hb-w');
+  function w0Off() { W().innerHTML = emptyHtml('🌙', 'Esta sección está descansando', 'Por ahora no está disponible. Vuelve pronto.'); }
   const rerender = () => { const st = view().scrollTop; render(); view().scrollTop = st; };
 
   /* ---------------- INICIO ---------------- */
   function vHome() {
     const w = W();
     const cards = {
+      sorpresa: () => {   // la sorpresa del 12/12: se ve su estado y lleva directo al regalo
+        const t = todayStr(), y = Number(t.slice(0, 4)); let k = y + '-12-12'; if (k < t) k = (y + 1) + '-12-12';
+        const dias = daysTo(k);
+        if (D.habilitado_12) return '<div class="hb-card"><h3>🎁 Sorpresa del 12/12</h3><div class="hb-big">¡Ya está lista!</div><p>Ábrela cuando quieras.</p><button class="hb-btn" data-go="regalo" type="button">Abrir la sorpresa</button></div>';
+        if (dias <= 30) return '<div class="hb-card"><h3>🎁 Sorpresa del 12/12</h3><div class="hb-big">' + (dias === 0 ? '¡Es hoy!' : dias === 1 ? 'Mañana' : 'Faltan ' + dias + ' días') + '</div><p>🔒 Se desbloqueará cuando llegue el momento.</p></div>';
+        return '';
+      },
       cartas: () => {
         const hoy = hoyCartas(), t = dispCartas().find((x) => x.fecha === hoy);
         if (!t) return '';
@@ -229,19 +238,22 @@
         if (!n.length) return '';
         return '<div class="hb-card"><h3>📅 Fechas importantes</h3>' + n.map((a) => '<p><b>' + esc(a.titulo) + '</b> · ' + fmtDate(a.k) + ' · ' + cuando(a.dias) + '</p>').join('') + '<button class="hb-btn ghost" data-go="fechas" type="button">Ver fechas</button></div>';
       },
+      musica: () => { if (!FN().musica) return ''; const c = cancionDelDia(); return c ? '<div class="hb-card"><h3>🎶 Canción del día</h3>' + songHtml(c) + '</div>' : ''; },
+      capsula: () => { if (!FN().capsulas) return ''; const L = (D.capsulas || []).filter((c) => daysTo(c.abre) <= 0); return L.length ? '<div class="hb-card"><h3>📮 Una cápsula te espera</h3><p>' + esc(L[0].titulo) + '</p><button class="hb-btn" data-go="capsulas" type="button">Abrir cápsulas</button></div>' : ''; },
       juntos: () => '<div class="hb-card" id="hb-juntos"></div>',
       aniversarios: () => {
         if (!startParts()) return '';
         const n = nextAnniv(1)[0], p = pastAnniv(), last = p[p.length - 1];
-        if (last && last.k === todayStr()) return '<div class="hb-card"><h3>🎂 Aniversario</h3><div class="hb-big">🎉 ¡Hoy cumplimos ' + esc(last.label) + '!</div><p>Gracias por cada día. Te amo.</p></div>';
+        if (last && last.k === todayStr()) return '<div class="hb-card"><h3>🎂 Aniversario</h3><div class="hb-big">🎉 ¡Hoy cumplimos ' + esc(last.label) + '!</div><p>Gracias por cada día. Te amo.</p>' + (FN().aniv_mes ? '<button class="hb-btn" data-aniv="' + last.n + '" type="button">💌 Abrir mi mini sorpresa</button>' : '') + '</div>';
         if (n && n.dias <= HOME_AVISO_DIAS) return '<div class="hb-card"><h3>🎂 Aniversario</h3><div class="hb-big">' + esc(n.label) + ' juntos</div><p>' + fmtDate(n.k) + ' · ' + cuando(n.dias) + '</p></div>';
         return '';
       }
     };
-    w.innerHTML = (offline && !loaded ? '<p class="hb-small" style="margin-bottom:.6rem">Sin conexión · mostrando lo último guardado.</p>' : '') + HOME_ORDER.map((k) => (cards[k] ? cards[k]() : '')).join('') + recuerdoCard() + '<div class="hb-card"><h3>Ir a…</h3><div class="hb-links">' + PAGES.filter((p) => p[0] !== 'home' && !p[4]).map((p) => '<a class="hb-btn ghost" href="' + p[1] + '">' + p[2] + ' ' + p[3] + '</a>').join('') + '</div></div><div class="hb-card"><h3>＋ Un recuerdo tuyo</h3><p>¿Una nota o una foto que quieras agregar a nuestro rincón?</p><button class="hb-btn" data-act="add" type="button">Agregar un recuerdo</button></div>';
+    w.innerHTML = (offline && !loaded ? '<p class="hb-small" style="margin-bottom:.6rem">Sin conexión · mostrando lo último guardado.</p>' : '') + HOME_ORDER.map((k) => (cards[k] ? cards[k]() : '')).join('') + recuerdoCard() + '<div class="hb-card"><h3>Ir a…</h3><div class="hb-links">' + PAGES.filter((p) => p[0] !== 'home' && !p[4] && featOn(p)).map((p) => '<a class="hb-btn ghost" href="' + p[1] + '">' + p[2] + ' ' + p[3] + '</a>').join('') + '</div></div><div class="hb-card"><h3>＋ Un recuerdo tuyo</h3><p>¿Una nota o una foto que quieras agregar a nuestro rincón?</p><button class="hb-btn" data-act="add" type="button">Agregar un recuerdo</button></div>';
     w.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => goto(b.dataset.go)));
     w.querySelectorAll('[data-act="regalo"]').forEach((b) => b.addEventListener('click', closeHub));
     w.querySelectorAll('[data-act="carta"]').forEach((b) => b.addEventListener('click', () => openCarta(hoyCartas())));
+    w.querySelectorAll('[data-aniv]').forEach((b) => b.addEventListener('click', () => openAniv(Number(b.dataset.aniv))));
     w.querySelectorAll('[data-act="add"]').forEach((b) => b.addEventListener('click', addRecuerdo));
     bindRecuerdo(w);
     const j = $('hb-juntos'); if (j) { paintJuntos(j); tick = setInterval(() => paintJuntos(j), 1000); }
@@ -468,7 +480,7 @@
     return { k: pick.k, exact, anios: y - Number(pick.k.slice(0, 4)), fotos: day.filter((x) => x.foto).map((x) => x.foto).slice(0, 3), lugares: day.filter((x) => x.lugar).map((x) => x.lugar.nombre), titulos: day.filter((x) => x.titulo).map((x) => x.titulo) };
   }
   function recuerdoCard() {
-    if (recDismissed) return '';
+    if (recDismissed || !FN().hace_anio) return '';
     const r = recuerdoDelDia(); if (!r) return '';
     const head = r.exact ? (r.anios === 1 ? 'Hace un año, en este día…' : 'Hace ' + r.anios + ' años, en este día…') : 'Un recuerdo nuestro…';
     const det = r.lugares.concat(r.titulos).map((x) => '<span class="hb-chip">' + esc(x) + '</span>').join('');
@@ -606,12 +618,13 @@
   }
   function vFotos() {
     const w = W();
-    w.innerHTML = '<div style="margin-bottom:.7rem"><button class="hb-btn hb-adm" id="f-up" type="button">＋ Subir fotos</button></div><div class="hb-tabs" role="tablist"><button class="hb-tab' + (fotosTab === 'cal' ? ' on' : '') + '" data-t="cal" role="tab" type="button">📅 Calendario</button><button class="hb-tab' + (fotosTab === 'album' ? ' on' : '') + '" data-t="album" role="tab" type="button">🖼️ Álbum</button></div>' + filtersHtml() + '<div id="hb-fb"></div>';
+    w.innerHTML = '<div style="margin-bottom:.7rem"><button class="hb-btn hb-adm" id="f-up" type="button">＋ Subir fotos</button></div><div class="hb-tabs" role="tablist"><button class="hb-tab' + (fotosTab === 'cal' ? ' on' : '') + '" data-t="cal" role="tab" type="button">📅 Calendario</button><button class="hb-tab' + (fotosTab === 'album' ? ' on' : '') + '" data-t="album" role="tab" type="button">🖼️ Álbum</button>' + (FN().album ? '<button class="hb-tab' + (fotosTab === 'hist' ? ' on' : '') + '" data-t="hist" role="tab" type="button">📖 Historia</button>' : '') + '</div>' + filtersHtml() + '<div id="hb-fb"></div>';
     w.querySelectorAll('.hb-tab').forEach((b) => b.addEventListener('click', () => { fotosTab = b.dataset.t; vFotos(); }));
     $('f-up').onclick = subirFotos;
     const body = $('hb-fb');
     function draw() {
       const list = filtered(photos());
+      if (fotosTab === 'hist' && FN().album) { const hl = list.filter((p) => isDate(p.fecha)); body.innerHTML = histHtml(hl); histBind(body, hl); return; }
       if (fotosTab === 'album') { body.innerHTML = '<p class="hb-small" style="margin-bottom:.5rem">' + pl(list.length, 'foto', 'fotos') + '</p>' + gridHtml(list); bindGrid(body, list); return; }
       const marks = {}; list.forEach((p) => { if (p.fecha) marks[p.fecha] = String((Number(marks[p.fecha]) || 0) + 1); });
       body.innerHTML = '<div id="hb-c"></div><div id="hb-day" style="margin-top:.8rem"></div>';
@@ -692,11 +705,17 @@
   }
   function vLugares() {
     const w = W();
-    w.innerHTML = '<div class="hb-tabs" role="tablist"><button class="hb-tab' + (lugaresTab === 'cal' ? ' on' : '') + '" data-t="cal" role="tab" type="button">📅 Calendario</button><button class="hb-tab' + (lugaresTab === 'mapa' ? ' on' : '') + '" data-t="mapa" role="tab" type="button">🗺️ Mapa</button></div><div style="margin-bottom:.7rem"><button class="hb-btn hb-adm" id="l-new" type="button">＋ Nuevo lugar</button></div><div id="hb-lb"></div>';
+    w.innerHTML = '<div class="hb-tabs" role="tablist"><button class="hb-tab' + (lugaresTab === 'cal' ? ' on' : '') + '" data-t="cal" role="tab" type="button">📅 Calendario</button><button class="hb-tab' + (lugaresTab === 'mapa' ? ' on' : '') + '" data-t="mapa" role="tab" type="button">🗺️ Mapa</button>' + (FN().por_visitar ? '<button class="hb-tab' + (lugaresTab === 'pv' ? ' on' : '') + '" data-t="pv" role="tab" type="button">⭐ Por visitar</button>' : '') + '</div><div style="margin-bottom:.7rem"><button class="hb-btn hb-adm" id="l-new" type="button">＋ Nuevo lugar</button></div><div id="hb-lb"></div>';
     w.querySelectorAll('.hb-tab').forEach((b) => b.addEventListener('click', () => { lugaresTab = b.dataset.t; vLugares(); }));
     $('l-new').onclick = () => editLugar(null);
     if (!D.lugares.length) { $('hb-lb').innerHTML = '<div class="hb-card"><p>Aún no hay lugares guardados. ' + (admin ? '' : 'Pronto aparecerán aquí.') + '</p></div>'; if (lugaresTab !== 'mapa') return; }
-    lugaresTab === 'cal' ? lugCal() : lugMapa();
+    lugaresTab === 'pv' && FN().por_visitar ? lugPorVisitar() : lugaresTab === 'cal' ? lugCal() : lugMapa();
+  }
+  function lugPorVisitar() {
+    const L = D.lugares.filter((l) => l.estado === 'por_visitar'), h = $('hb-lb');
+    h.innerHTML = L.length ? '<div class="hb-list">' + L.map((l) => '<div class="hb-item"><b>⭐ ' + esc(l.nombre) + '</b>' + (l.nota ? '<small>' + esc(l.nota) + '</small>' : '') + (isFinite(l.lat) && isFinite(l.lng) ? '<a class="hb-btn ghost" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?api=1&query=' + l.lat + ',' + l.lng + '">🗺️ Ver en Google Maps</a>' : '') + '<button class="hb-btn hb-adm" data-v="' + esc(l.id) + '" type="button">✓ Ya lo visitamos</button><button class="hb-btn ghost hb-adm" data-e="' + esc(l.id) + '" type="button">✎ Editar</button></div>').join('') + '</div>' : emptyHtml('⭐', 'Sin lugares pendientes', 'Añade un lugar y elige “Por visitar” para soñar el próximo paseo.');
+    h.querySelectorAll('[data-e]').forEach((b) => { b.onclick = () => editLugar(D.lugares.find((l) => l.id === b.dataset.e)); });
+    h.querySelectorAll('[data-v]').forEach((b) => { b.onclick = async () => { const l = D.lugares.find((x) => x.id === b.dataset.v); const j = await adminPost('lugar_guardar', { id: l.id, nombre: l.nombre, lat: l.lat, lng: l.lng, fechas: (l.fechas || []).concat(todayStr()), nota: l.nota || '', estado: 'visitado' }); if (j.ok) { await load(); rerender(); toast('🎉 ¡Lugar visitado!'); } else if (j.error !== 'cancel') toast(errTxt(j)); }; });
   }
   function placeCard(l) {
     const ph = photos().filter((p) => p.lugar_id === l.id).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
@@ -786,8 +805,8 @@
     if (!pick) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   function editLugar(l, keep) {
-    const draft = keep ? l : { id: l ? l.id : '', nombre: l ? l.nombre : '', lat: l ? String(l.lat) : '', lng: l ? String(l.lng) : '', fechas: l ? l.fechas.join(', ') : '', nota: l ? l.nota : '' };
-    modal('<h3>' + (draft.id ? 'Editar lugar' : 'Nuevo lugar') + '</h3><label>Nombre<input class="hb-in" id="p-n" maxlength="80" value="' + esc(draft.nombre) + '"></label>' +
+    const draft = keep ? l : { id: l ? l.id : '', nombre: l ? l.nombre : '', lat: l ? String(l.lat) : '', lng: l ? String(l.lng) : '', fechas: l ? l.fechas.join(', ') : '', nota: l ? l.nota : '', estado: l && l.estado === 'por_visitar' ? 'por_visitar' : 'visitado' };
+    modal('<h3>' + (draft.id ? 'Editar lugar' : 'Nuevo lugar') + '</h3>' + (FN().por_visitar ? '<label>Estado<select class="hb-in" id="p-st"><option value="visitado"' + (draft.estado === 'visitado' ? ' selected' : '') + '>📍 Ya lo visitamos</option><option value="por_visitar"' + (draft.estado === 'por_visitar' ? ' selected' : '') + '>⭐ Por visitar</option></select></label>' : '') + '<label>Nombre<input class="hb-in" id="p-n" maxlength="80" value="' + esc(draft.nombre) + '"></label>' +
       '<div class="row"><label>Latitud<input class="hb-in" id="p-la" inputmode="decimal" value="' + esc(draft.lat) + '"></label><label>Longitud<input class="hb-in" id="p-lo" inputmode="decimal" value="' + esc(draft.lng) + '"></label></div>' +
       '<label>Enlace de Google Maps (compartir → copiar enlace)<input class="hb-in" id="p-gl" placeholder="https://maps.app.goo.gl/... o 13.69, -89.19" autocomplete="off"></label><div class="row"><button class="hb-btn ghost" id="p-gb" type="button">🗺️ Usar este enlace</button></div>' +
       '<div class="row"><button class="hb-btn ghost" id="p-map" type="button">📍 Elegir en el mapa</button><button class="hb-btn ghost" id="p-gps" type="button">🎯 Mi ubicación</button></div>' +
@@ -795,7 +814,7 @@
       '<div class="row"><input class="hb-in" id="p-fd" type="date" aria-label="Añadir fecha"><button class="hb-btn ghost" id="p-fa" type="button">Añadir fecha</button></div>' +
       '<label>Nota<textarea class="hb-in" id="p-t" rows="2" maxlength="300">' + esc(draft.nota) + '</textarea></label><div class="err" id="p-e"></div>' +
       '<div class="row"><button class="hb-btn ghost" id="p-x" type="button">Cancelar</button><button class="hb-btn" id="p-g" type="button">Guardar</button></div>' + (draft.id ? '<button class="hb-btn danger" id="p-del" type="button">Borrar lugar</button>' : ''));
-    const read = () => ({ id: draft.id, nombre: $('p-n').value.trim(), lat: $('p-la').value.trim(), lng: $('p-lo').value.trim(), fechas: $('p-f').value, nota: $('p-t').value.trim() });
+    const read = () => ({ id: draft.id, nombre: $('p-n').value.trim(), lat: $('p-la').value.trim(), lng: $('p-lo').value.trim(), fechas: $('p-f').value, nota: $('p-t').value.trim(), estado: $('p-st') ? $('p-st').value : draft.estado });
     $('p-x').onclick = closeModal;
     $('p-gb').onclick = async () => {
       const v = $('p-gl').value.trim(); if (!v) { $('p-e').textContent = 'Pega primero el enlace.'; return; }
@@ -813,7 +832,7 @@
       if (!v.nombre) { $('p-e').textContent = 'Escribe el nombre.'; return; }
       if (!isFinite(Number(v.lat)) || !isFinite(Number(v.lng)) || v.lat === '' || v.lng === '') { $('p-e').textContent = 'Falta la ubicación (usa el mapa o escribe latitud y longitud).'; return; }
       if (fechas.some((f) => !isDate(f))) { $('p-e').textContent = 'Revisa las fechas (AAAA-MM-DD).'; return; }
-      closeModal(); const j = await adminPost('lugar_guardar', { id: v.id, nombre: v.nombre, lat: Number(v.lat), lng: Number(v.lng), fechas, nota: v.nota });
+      closeModal(); const j = await adminPost('lugar_guardar', { id: v.id, nombre: v.nombre, lat: Number(v.lat), lng: Number(v.lng), fechas, nota: v.nota, estado: v.estado });
       if (j.ok) { await load(); if (j.id) selLugar = j.id; rerender(); toast('Lugar guardado'); } else if (j.error !== 'cancel') toast(errTxt(j));
     };
   }
@@ -897,9 +916,17 @@
     $('ad-o').onclick = go; k.onkeydown = (e) => { if (e.key === 'Enter') go(); }; $('ad-c').onclick = closeModal;
   }
   function adminPanel() {
-    modal('<h3>🛠 Administrador</h3><p class="hb-small">Modo administrador activo. En cada sección verás los botones ✎ y ＋ para editar.</p><button class="hb-btn" id="ap-s" type="button">SOPORTE</button><button class="hb-btn" id="ap-c" type="button">📬 Correos (los dos)</button>' + (ss('hb_rol') === 'ella' ? '' : '<button class="hb-btn" id="ap-e" type="button">👩 Acceso de ella</button>') + '<button class="hb-btn ghost" id="ap-h" type="button">❔ Ayuda de bienvenida</button><button class="hb-btn ghost" id="ap-o" type="button">Salir del modo admin</button><button class="hb-btn ghost" id="ap-x" type="button">Cerrar</button>');
-    $('ap-x').onclick = closeModal; $('ap-s').onclick = soporte;
+    modal('<h3>🛠 Administrador</h3><p class="hb-small">Modo administrador activo. En cada sección verás los botones ✎ y ＋ para editar.</p><button class="hb-btn" id="ap-s" type="button">SOPORTE</button><button class="hb-btn" id="ap-12" type="button">🎁 Sorpresa 12/12 (bloquear / desbloquear)</button><button class="hb-btn" id="ap-c" type="button">📬 Correos (los dos)</button><button class="hb-btn" id="ap-fn" type="button">⚙️ Funciones (sí / no)</button>' + (FN().estado ? '<button class="hb-btn" id="ap-st" type="button">🩺 Estado del sistema</button>' : '') + (ss('hb_rol') === 'ella' ? '' : '<button class="hb-btn" id="ap-e" type="button">👩 Acceso de ella</button>') + '<button class="hb-btn ghost" id="ap-h" type="button">❔ Ayuda de bienvenida</button><button class="hb-btn ghost" id="ap-o" type="button">Salir del modo admin</button><button class="hb-btn ghost" id="ap-x" type="button">Cerrar</button>');
+    $('ap-x').onclick = closeModal; $('ap-s').onclick = soporte; $('ap-fn').onclick = funcionesPanel; if ($('ap-st')) $('ap-st').onclick = estadoPanel;
     if ($('ap-e')) $('ap-e').onclick = accesoElla;
+    $('ap-12').onclick = async () => {
+      let st = null; try { st = await api('GET', { action: 'estado' }); } catch (e) {}
+      if (!st || st.ok !== true) { toast('No se pudo leer el estado. Revisa tu conexión.'); return; }
+      const nuevo = !st.habilitado_12;
+      if (!confirm(nuevo ? 'La sorpresa del 12 está BLOQUEADA. ¿Desbloquearla ahora?' : 'La sorpresa del 12 está DESBLOQUEADA. ¿Volver a bloquearla?')) return;
+      const j = await adminPost('sorpresa_set', { habilitada: nuevo });
+      if (j.ok) { await load(); closeModal(); toast(j.habilitado_12 ? '🎁 Sorpresa del 12 desbloqueada' : '🔒 Sorpresa del 12 bloqueada'); if (cur === 'home') render(); } else if (j.error !== 'cancel') toast(errTxt(j));
+    };
     $('ap-o').onclick = () => { admin = false; adminKey = ''; ssSet('hb_admin', ''); ssSet('hb_key', ''); ssSet('hb_rol', ''); document.body.classList.remove('hb-admin'); closeModal(); toast('Modo administrador apagado'); if (cur === 'pend') render(); };
   }
   async function accesoElla() {
@@ -936,6 +963,229 @@
       }));
     };
     draw();
+  }
+
+  /* ================= v14 · interruptores, apariencia y secciones nuevas ================= */
+  const FN_D = { estado: 1, validar: 1, correo_carta: 0, hace_anio: 1, por_visitar: 1, metas: 1, capsulas: 1, musica: 1, retro: 1, album: 1, aniv_mes: 1, temas: 1, barra: 1 };
+  function FN() {
+    const f = Object.assign({}, FN_D), s = D && D.fn;
+    if (s && typeof s === 'object') Object.keys(s).forEach((k) => { f[k] = s[k] === true || s[k] === 'TRUE' || s[k] === 1 || s[k] === 'true'; });
+    return f;
+  }
+  const featOn = (p) => !p[5] || FN()[p[5]];
+  const emptyHtml = (ico, t, s) => '<div class="hb-empty"><div class="ei" aria-hidden="true">' + ico + '</div><b>' + esc(t) + '</b><p>' + esc(s || '') + '</p></div>';
+  const skelHtml = () => '<div class="hb-skel"></div><div class="hb-skel s2"></div><div class="hb-skel s3"></div>';
+
+  /* ---- Apariencia (se guarda solo en este dispositivo) ---- */
+  const PREF0 = { tema: '', fuente: 100, anim: true, vib: true, alto: false };
+  function prefs() { try { return Object.assign({}, PREF0, JSON.parse(localStorage.getItem('hub_pref') || '{}')); } catch (e) { return Object.assign({}, PREF0); } }
+  function setPref(k, v) { const p = prefs(); p[k] = v; try { localStorage.setItem('hub_pref', JSON.stringify(p)); } catch (e) {} applyLook(); }
+  function temaAuto() {
+    const md = todayStr().slice(5);
+    if (md >= '12-11' && md <= '12-13') return 'doce';
+    if (md >= '12-01' || md <= '01-06') return 'navidad';
+    if (md >= '02-07' && md <= '02-15') return 'sanvalentin';
+    return 'clasico';
+  }
+  const TEMAS = [['auto', 'Automático (según la fecha)'], ['clasico', 'Clásico'], ['navidad', 'Navidad 🎄'], ['sanvalentin', 'San Valentín 💘'], ['doce', 'Doce de diciembre 🎁']];
+  function temaActual() { const p = prefs(); let t = FN().temas ? (p.tema || (D && D.tema) || 'auto') : 'clasico'; if (t === 'auto') t = temaAuto(); return t; }
+  function applyLook() {
+    const p = prefs(), h = document.documentElement, t = temaActual();
+    h.dataset.tema = t; h.style.fontSize = Math.max(85, Math.min(140, Number(p.fuente) || 100)) + '%';
+    h.classList.toggle('no-anim', !p.anim || RM); h.classList.toggle('alto', !!p.alto);
+    document.body.classList.toggle('hb-bar', !!FN().barra);
+    let fx = $('hb-fx'); const quiere = p.anim && !RM && (t === 'navidad' || t === 'sanvalentin');
+    if (quiere && !fx) { fx = document.createElement('div'); fx.id = 'hb-fx'; fx.setAttribute('aria-hidden', 'true'); document.body.appendChild(fx); }
+    if (fx) { if (!quiere) fx.remove(); else { const ch = t === 'navidad' ? '❄' : '♥'; let s = ''; for (let i = 0; i < 14; i++) s += '<i style="left:' + Math.round((i * 7.3 + 3) % 100) + '%;animation-delay:' + (-(i * 1.7) % 12).toFixed(1) + 's;animation-duration:' + (9 + (i % 5) * 2) + 's;font-size:' + (10 + (i % 4) * 4) + 'px">' + ch + '</i>'; fx.innerHTML = s; } }
+  }
+  const buzz = (n) => { if (prefs().vib && navigator.vibrate) { try { navigator.vibrate(n || 10); } catch (e) {} } };
+  function buildTabbar() {
+    let b = $('hb-tabbar'); if (!b) { b = document.createElement('nav'); b.id = 'hb-tabbar'; b.setAttribute('aria-label', 'Acceso rápido'); document.body.appendChild(b); }
+    const t = [['home', 'index.html', '🏠', 'Inicio'], ['cartas', 'cartas.html', '✉️', 'Cartas'], ['fotos', 'fotos.html', '🖼️', 'Fotos'], ['lugares', 'lugares.html', '📍', 'Lugares']];
+    b.innerHTML = t.map((x) => '<a href="' + x[1] + '"' + (x[0] === PAGE ? ' class="cur" aria-current="page"' : '') + '><span>' + x[2] + '</span>' + x[3] + '</a>').join('') + '<button type="button" id="hb-tb-more"><span>☰</span>Más</button>';
+    $('hb-tb-more').onclick = () => toggleNav(true);
+  }
+
+  /* ---- Papel de carta genérico (cápsulas y mini sorpresas) ---- */
+  function showPaper(c) {
+    const L = $('hb-letter');
+    L.innerHTML = '<div class="lpaper"><button class="hb-ib lx" id="l-x" type="button" aria-label="Cerrar">✕</button><div class="ld">' + esc(c.fecha || '') + '</div><h3 class="lt">' + esc(c.titulo || 'Para ti') + '</h3><div class="lb">' + String(c.texto || '').split(/\n{2,}/).map((p) => '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>').join('') + '</div>' + (c.pie ? '<p class="hb-small" style="text-align:center">' + esc(c.pie) + '</p>' : '') + (c.admin ? '<div class="vrow"><button class="hb-btn ghost hb-adm" id="l-ed" type="button">✎ Editar</button></div>' : '') + '</div>';
+    L.classList.add('on'); L.setAttribute('aria-hidden', 'false'); L.scrollTop = 0; buzz(18);
+    $('l-x').onclick = closeCarta; if ($('l-ed') && c.admin) $('l-ed').onclick = () => { closeCarta(); c.admin(); };
+  }
+  async function openAniv(n) {
+    let j = null; try { j = await api('GET', { action: 'aniv_carta', n }, null, { busy: 'Abriendo tu mini sorpresa…' }); } catch (e) {}
+    if (!j || j.ok !== true) { toast('No se pudo abrir ahora. Revisa tu conexión.'); return; }
+    if (j.bloqueada) { toast('Esta sorpresa se abre el ' + fmtDate(j.fecha)); return; }
+    showPaper({ fecha: fmtDate(j.fecha) + ' · ' + j.tiempo, titulo: j.titulo, texto: j.texto, admin: () => editAniv(j) });
+  }
+  function editAniv(j) {
+    modal('<h3>Mini sorpresa · ' + esc(j.tiempo) + '</h3><p class="hb-small">Si lo dejas vacío y guardas, vuelve el texto automático.</p><label>Título<input class="hb-in" id="an-t" maxlength="100" value="' + esc(j.titulo) + '"></label><label>Texto<textarea class="hb-in" id="an-x" rows="10" maxlength="3000">' + esc(j.texto) + '</textarea></label><div class="err" id="an-e"></div><div class="row"><button class="hb-btn ghost" id="an-c" type="button">Cancelar</button><button class="hb-btn" id="an-g" type="button">Guardar</button></div>');
+    $('an-c').onclick = closeModal;
+    $('an-g').onclick = async () => { const r = await adminPost('aniv_guardar', { n: j.n, titulo: $('an-t').value.trim(), texto: $('an-x').value }); if (r.ok) { closeModal(); toast('Guardado'); } else if (r.error !== 'cancel') $('an-e').textContent = errTxt(r); };
+  }
+  const saveLocal = () => { try { localStorage.setItem(LS, JSON.stringify(D)); } catch (e) {} };
+
+  /* ---- Metas y sueños ---- */
+  function vMetas() {
+    const w = W(), L = (D.metas || []).slice().sort((a, b) => (a.hecha === b.hecha ? a.orden - b.orden : a.hecha ? 1 : -1));
+    const hechas = L.filter((m) => m.hecha).length, pct = L.length ? Math.round(hechas * 100 / L.length) : 0;
+    w.innerHTML = '<div class="hb-card"><h3>🌟 Nuestros sueños y metas</h3><div class="hb-big">' + hechas + ' de ' + L.length + ' cumplidos</div><div class="hb-prog" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><i style="width:' + pct + '%"></i></div></div>' +
+      '<div style="margin-bottom:.7rem"><button class="hb-btn hb-adm" id="m-new" type="button">＋ Nueva meta</button></div>' +
+      (L.length ? '<div class="hb-list">' + L.map((m) => '<div class="hb-meta' + (m.hecha ? ' on' : '') + '"><button class="hb-chk" type="button" data-id="' + esc(m.id) + '" aria-pressed="' + (m.hecha ? 'true' : 'false') + '" aria-label="Marcar como cumplida">' + (m.hecha ? '✓' : '') + '</button><div><b>' + esc(m.texto) + '</b>' + (m.nota ? '<small>' + esc(m.nota) + '</small>' : '') + (m.hecha && isDate(m.fecha_hecha) ? '<small>Cumplida el ' + fmtDate(m.fecha_hecha) + '</small>' : '') + '</div><button class="hb-ib hb-adm" type="button" data-ed="' + esc(m.id) + '" aria-label="Editar">✎</button></div>').join('') + '</div>' : emptyHtml('🌟', 'Aún no hay metas', 'Aquí van los sueños de los dos: viajes, lugares por conocer, cosas por vivir juntos.'));
+    $('m-new').onclick = () => editMeta(null);
+    w.querySelectorAll('[data-ed]').forEach((b) => { b.onclick = () => editMeta(D.metas.find((m) => m.id === b.dataset.ed)); });
+    w.querySelectorAll('.hb-chk').forEach((b) => b.addEventListener('click', async () => {
+      const m = D.metas.find((x) => x.id === b.dataset.id); if (!m) return;
+      m.hecha = !m.hecha; m.fecha_hecha = m.hecha ? todayStr() : ''; saveLocal(); buzz(m.hecha ? [14, 40, 14] : 8); rerender(); if (m.hecha) toast('🎉 ¡Meta cumplida!');
+      try { const j = await api('POST', null, { action: 'meta_toggle', id: m.id, hecha: m.hecha }); if (!j || j.ok !== true) throw new Error('x'); }
+      catch (e) { m.hecha = !m.hecha; saveLocal(); rerender(); toast('No se pudo guardar. Intenta de nuevo.'); }
+    }));
+  }
+  function editMeta(m) {
+    modal('<h3>' + (m ? 'Editar meta' : 'Nueva meta') + '</h3><label>Meta o sueño<input class="hb-in" id="me-t" maxlength="160" value="' + esc(m ? m.texto : '') + '"></label><label>Nota (opcional)<textarea class="hb-in" id="me-n" rows="2" maxlength="300">' + esc(m ? m.nota : '') + '</textarea></label><div class="err" id="me-e"></div><div class="row"><button class="hb-btn ghost" id="me-c" type="button">Cancelar</button><button class="hb-btn" id="me-g" type="button">Guardar</button></div>' + (m ? '<button class="hb-btn danger" id="me-d" type="button">Borrar meta</button>' : ''));
+    $('me-c').onclick = closeModal;
+    $('me-g').onclick = async () => { const t = $('me-t').value.trim(); if (!t) { $('me-e').textContent = 'Escribe la meta.'; return; } closeModal(); const j = await adminPost('meta_guardar', { id: m ? m.id : '', texto: t, nota: $('me-n').value.trim() }); if (j.ok) { await load(); rerender(); toast('Meta guardada'); } else if (j.error !== 'cancel') toast(errTxt(j)); };
+    if ($('me-d')) $('me-d').onclick = async () => { if (!confirm('¿Borrar esta meta?')) return; closeModal(); const j = await adminPost('meta_borrar', { id: m.id }); if (j.ok) { await load(); rerender(); } else if (j.error !== 'cancel') toast(errTxt(j)); };
+  }
+
+  /* ---- Cápsulas del tiempo ---- */
+  function vCapsulas() {
+    const w = W(), L = (D.capsulas || []).slice().sort((a, b) => String(a.abre).localeCompare(String(b.abre)));
+    w.innerHTML = '<div class="hb-card"><h3>📮 Cápsulas del tiempo</h3><p>Escribe un mensaje para el futuro. Nadie, ni tú, podrá leerlo hasta la fecha que elijas.</p><button class="hb-btn" id="c-new" type="button">＋ Escribir una cápsula</button></div>' +
+      (L.length ? '<div class="hb-list">' + L.map((c) => { const d = daysTo(c.abre); const abierta = d <= 0; return '<button type="button" class="hb-item" data-id="' + esc(c.id) + '" data-ab="' + (abierta ? '1' : '') + '">' + (abierta ? '💌 ' : '🔒 ') + esc(c.titulo) + '<small>De ' + (c.autor === 'ella' ? 'ella' : 'mí') + ' · se abre el ' + fmtDate(c.abre) + (abierta ? ' · ¡ya se puede abrir!' : ' · faltan ' + pl(d, 'día', 'días')) + '</small></button>'; }).join('') + '</div>' : emptyHtml('📮', 'Todavía no hay cápsulas', 'Escribe la primera y se abrirá en la fecha que quieras.'));
+    $('c-new').onclick = newCapsula;
+    w.querySelectorAll('.hb-item[data-id]').forEach((b) => b.addEventListener('click', async () => {
+      if (!b.dataset.ab) { toast('Aún no es el momento 🔒'); return; }
+      let j = null; try { j = await api('GET', { action: 'capsula_abrir', id: b.dataset.id }, null, { busy: 'Abriendo la cápsula…' }); } catch (e) {}
+      if (!j || j.ok !== true) { toast('No se pudo abrir ahora.'); return; }
+      if (j.bloqueada) { toast('Se abre el ' + fmtDate(j.abre)); return; }
+      showPaper({ fecha: 'Escrita el ' + fmtDate(j.creado) + ' · abierta hoy', titulo: j.titulo, texto: j.texto, pie: 'De ' + (j.autor === 'ella' ? 'ella' : 'mí') + ' para el futuro' });
+    }));
+    if (admin) w.querySelectorAll('.hb-item[data-id]').forEach((b) => b.addEventListener('contextmenu', (e) => { e.preventDefault(); borrarCapsula(b.dataset.id); }));
+  }
+  async function borrarCapsula(id) { if (!confirm('¿Borrar esta cápsula?')) return; const j = await adminPost('capsula_borrar', { id }); if (j.ok) { await load(); rerender(); } else if (j.error !== 'cancel') toast(errTxt(j)); }
+  function newCapsula() {
+    const man = (() => { const d = new Date(nowSV().getTime() + 86400000); return ymd(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); })();
+    modal('<h3>📮 Nueva cápsula</h3><label>¿Quién escribe?<select class="hb-in" id="cp-a"><option value="yo">Yo</option><option value="ella">Ella</option></select></label><label>Título<input class="hb-in" id="cp-t" maxlength="80"></label><label>Mensaje<textarea class="hb-in" id="cp-x" rows="7" maxlength="3000" placeholder="Para quien seamos cuando se abra…"></textarea></label><label>Se abre el<input class="hb-in" id="cp-d" type="date" min="' + man + '"></label><p class="hb-small">⚠️ Una vez enviada no se puede leer ni cambiar hasta esa fecha.</p><div class="err" id="cp-e"></div><div class="row"><button class="hb-btn ghost" id="cp-c" type="button">Cancelar</button><button class="hb-btn" id="cp-g" type="button">Guardar cápsula</button></div>');
+    $('cp-c').onclick = closeModal;
+    $('cp-g').onclick = async () => {
+      const t = $('cp-t').value.trim(), x = $('cp-x').value.trim(), d = $('cp-d').value;
+      if (!t || !x) { $('cp-e').textContent = 'Escribe el título y el mensaje.'; return; }
+      if (!isDate(d) || d <= todayStr()) { $('cp-e').textContent = 'Elige una fecha futura.'; return; }
+      closeModal();
+      try { const j = await api('POST', null, { action: 'capsula_crear', autor: $('cp-a').value, titulo: t, texto: x, abre: d }, { busy: 'Guardando tu cápsula…' }); if (j && j.ok) { await load(); rerender(); toast('📮 Cápsula guardada. Se abrirá el ' + fmtDate(d)); buzz(20); } else toast(errTxt(j)); } catch (e) { toast('No se pudo guardar. Revisa tu conexión.'); }
+    };
+  }
+
+  /* ---- Música ---- */
+  function cancionDelDia() {
+    const L = D.canciones || []; if (!L.length) return null;
+    const hoy = L.find((c) => c.fecha === todayStr()); if (hoy) return hoy;
+    const sinFecha = L.filter((c) => !c.fecha); const base = sinFecha.length ? sinFecha : L;
+    const t = todayStr().split('-').map(Number); return base[Math.floor(Date.UTC(t[0], t[1] - 1, t[2]) / 86400000) % base.length];
+  }
+  const songHtml = (c) => '<b>🎵 ' + esc(c.titulo) + '</b>' + (c.artista ? '<small>' + esc(c.artista) + '</small>' : '') + (c.nota ? '<small>' + esc(c.nota) + '</small>' : '') + (c.url ? '<a class="hb-btn" target="_blank" rel="noopener noreferrer" href="' + esc(c.url) + '">▶ Escuchar</a>' : '');
+  function vMusica() {
+    const w = W(), L = D.canciones || [], hoy = cancionDelDia();
+    w.innerHTML = '<div style="margin-bottom:.7rem"><button class="hb-btn hb-adm" id="s-new" type="button">＋ Añadir canción</button></div>' + (hoy ? '<div class="hb-card"><h3>🎶 Canción del día</h3>' + songHtml(hoy) + '</div>' : '') +
+      (L.length ? '<div class="hb-card"><h3>Nuestra playlist</h3><div class="hb-list">' + L.map((c) => '<div class="hb-item">' + songHtml(c) + '<button class="hb-btn ghost hb-adm" type="button" data-ed="' + esc(c.id) + '">✎ Editar</button></div>').join('') + '</div></div>' : emptyHtml('🎵', 'Aún no hay canciones', 'Aquí vivirá la playlist de los dos.'));
+    $('s-new').onclick = () => editCancion(null);
+    w.querySelectorAll('[data-ed]').forEach((b) => { b.onclick = () => editCancion(L.find((c) => c.id === b.dataset.ed)); });
+  }
+  function editCancion(c) {
+    modal('<h3>' + (c ? 'Editar canción' : 'Nueva canción') + '</h3><label>Título<input class="hb-in" id="so-t" maxlength="100" value="' + esc(c ? c.titulo : '') + '"></label><label>Artista<input class="hb-in" id="so-a" maxlength="100" value="' + esc(c ? c.artista : '') + '"></label><label>Enlace (https, opcional)<input class="hb-in" id="so-u" maxlength="300" value="' + esc(c ? c.url : '') + '" placeholder="https://..."></label><label>Dedicada al día (opcional)<input class="hb-in" id="so-f" type="date" value="' + esc(c && isDate(c.fecha) ? c.fecha : '') + '"></label><label>Nota<input class="hb-in" id="so-n" maxlength="200" value="' + esc(c ? c.nota : '') + '"></label><div class="err" id="so-e"></div><div class="row"><button class="hb-btn ghost" id="so-c" type="button">Cancelar</button><button class="hb-btn" id="so-g" type="button">Guardar</button></div>' + (c ? '<button class="hb-btn danger" id="so-d" type="button">Borrar canción</button>' : ''));
+    $('so-c').onclick = closeModal;
+    $('so-g').onclick = async () => { const t = $('so-t').value.trim(), u = $('so-u').value.trim(); if (!t) { $('so-e').textContent = 'Escribe el título.'; return; } if (u && !/^https:\/\/\S+$/.test(u)) { $('so-e').textContent = 'El enlace debe empezar con https://'; return; } closeModal(); const j = await adminPost('cancion_guardar', { id: c ? c.id : '', titulo: t, artista: $('so-a').value.trim(), url: u, fecha: $('so-f').value, nota: $('so-n').value.trim() }); if (j.ok) { await load(); rerender(); toast('Canción guardada'); } else if (j.error !== 'cancel') toast(errTxt(j)); };
+    if ($('so-d')) $('so-d').onclick = async () => { if (!confirm('¿Borrar esta canción?')) return; closeModal(); const j = await adminPost('cancion_borrar', { id: c.id }); if (j.ok) { await load(); rerender(); } else if (j.error !== 'cancel') toast(errTxt(j)); };
+  }
+
+  /* ---- Retrospectiva anual ---- */
+  function vRetro() {
+    const w = W(), hoyY = Number(todayStr().slice(0, 4)), md = todayStr().slice(5), ys = new Set([hoyY]);
+    photos().forEach((p) => { if (isDate(p.fecha)) ys.add(Number(p.fecha.slice(0, 4))); });
+    D.lugares.forEach((l) => placeDates(l).forEach((f) => ys.add(Number(f.slice(0, 4)))));
+    (D.metas || []).forEach((m) => { if (isDate(m.fecha_hecha)) ys.add(Number(m.fecha_hecha.slice(0, 4))); });
+    const years = Array.from(ys).filter((y) => y >= 2000).sort((a, b) => b - a);
+    let Y = Number(P.get('anio')) || retroY || hoyY; if (!years.includes(Y)) Y = hoyY; retroY = Y;
+    const tabs = '<div class="hb-tabs" role="tablist">' + years.map((y) => '<button class="hb-tab' + (y === Y ? ' on' : '') + '" data-y="' + y + '" role="tab" type="button">' + y + '</button>').join('') + '</div>';
+    if (Y === hoyY && md < '12-01' && !admin) { w.innerHTML = tabs + '<div class="hb-card"><h3>✨ Nuestro ' + Y + '</h3><p>Tu retrospectiva se abre el <b>1 de diciembre</b>. Mientras tanto, sigan sumando recuerdos 💛</p></div>'; bindY(); return; }
+    const inY = (k) => isDate(k) && Number(k.slice(0, 4)) === Y;
+    const fotosY = photos().filter((p) => inY(p.fecha)), lugs = D.lugares.filter((l) => placeDates(l).some(inY));
+    const metasY = (D.metas || []).filter((m) => m.hecha && inY(m.fecha_hecha));
+    let leidas = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf('carta_vista_' + Y) === 0) leidas++; } } catch (e) {}
+    const porMes = {}; fotosY.forEach((p) => { const m = p.fecha.slice(5, 7); porMes[m] = (porMes[m] || 0) + 1; });
+    const topM = Object.keys(porMes).sort((a, b) => porMes[b] - porMes[a])[0];
+    const porLug = {}; fotosY.forEach((p) => { if (p.lugar_id) porLug[p.lugar_id] = (porLug[p.lugar_id] || 0) + 1; });
+    const topL = Object.keys(porLug).sort((a, b) => porLug[b] - porLug[a])[0], topLug = topL && D.lugares.find((l) => l.id === topL);
+    const dias = (() => { const sp = startParts(); if (!sp) return 0; const fin = Y === hoyY ? todayStr() : Y + '-12-31', ini = Y + '-01-01'; const a = Math.max(Date.UTC(sp[0], sp[1] - 1, sp[2]), Date.UTC(Y, 0, 1)), b = Date.UTC(...fin.split('-').map((x, i) => (i === 1 ? Number(x) - 1 : Number(x)))); return b >= a ? Math.round((b - a) / 86400000) + 1 : 0; })();
+    const tile = (n, t) => '<div class="hb-tile"><div class="hb-big">' + n + '</div><span>' + t + '</span></div>';
+    w.innerHTML = tabs + '<div class="hb-card"><h3>✨ Nuestro ' + Y + '</h3><p>Lo que vivimos este año, en un vistazo.</p></div><div class="hb-tiles">' + tile(dias, 'días juntos') + tile(fotosY.length, 'fotos') + tile(lugs.length, 'lugares visitados') + tile(metasY.length, 'metas cumplidas') + tile(leidas, 'cartas abiertas') + '</div>' +
+      (topM ? '<div class="hb-card"><h3>📸 Mes con más fotos</h3><div class="hb-big">' + MES[Number(topM) - 1] + '</div><p>' + pl(porMes[topM], 'foto', 'fotos') + '</p></div>' : '') + (topLug ? '<div class="hb-card"><h3>📍 Lugar favorito del año</h3><div class="hb-big">' + esc(topLug.nombre) + '</div><p>' + pl(porLug[topL], 'foto', 'fotos') + ' ahí</p></div>' : '') +
+      (lugs.length ? '<div class="hb-card"><h3>Lugares de ' + Y + '</h3><p>' + lugs.map((l) => '<span class="hb-chip">' + esc(l.nombre) + '</span>').join('') + '</p></div>' : '') + (metasY.length ? '<div class="hb-card"><h3>🌟 Metas cumplidas</h3>' + metasY.map((m) => '<p>✓ ' + esc(m.texto) + '</p>').join('') + '</div>' : '') + (!fotosY.length && !lugs.length && !metasY.length ? emptyHtml('✨', 'Año por escribir', 'Cuando haya fotos, lugares o metas de ' + Y + ', aparecerán aquí.') : '');
+    bindY();
+    function bindY() { w.querySelectorAll('.hb-tab[data-y]').forEach((b) => b.addEventListener('click', () => { retroY = Number(b.dataset.y); vRetro(); })); }
+  }
+  let retroY = 0;
+
+  /* ---- Álbum con historia ---- */
+  function histHtml(list) {
+    const por = {}; list.forEach((p) => { if (isDate(p.fecha)) (por[p.fecha.slice(0, 7)] = por[p.fecha.slice(0, 7)] || []).push(p); });
+    const meses = Object.keys(por).sort();
+    if (!meses.length) return emptyHtml('📖', 'Sin historia todavía', 'Las fotos con fecha se ordenan aquí mes a mes, con los lugares y fechas de cada etapa.');
+    return meses.map((m, i) => {
+      const [y, mm] = m.split('-').map(Number), lugs = D.lugares.filter((l) => placeDates(l).some((f) => f.slice(0, 7) === m)), fs = D.fechas.filter((f) => isDate(f.fecha) && f.fecha.slice(0, 7) === m);
+      return '<section class="hb-hist"><h3>' + MES[mm - 1] + ' ' + y + '</h3>' + (lugs.length || fs.length ? '<p>' + lugs.map((l) => '<span class="hb-chip">📍 ' + esc(l.nombre) + '</span>').join('') + fs.map((f) => '<span class="hb-chip">💌 ' + esc(f.titulo) + '</span>').join('') + '</p>' : '') + '<div id="hist-' + i + '"></div></section>';
+    }).join('') + '<!--h-->';
+  }
+  function histBind(host, list) {
+    const por = {}; list.forEach((p) => { if (isDate(p.fecha)) (por[p.fecha.slice(0, 7)] = por[p.fecha.slice(0, 7)] || []).push(p); });
+    Object.keys(por).sort().forEach((m, i) => { const h = host.querySelector('#hist-' + i); if (h) { h.innerHTML = gridHtml(por[m]); bindGrid(h, por[m]); } });
+  }
+
+  /* ---- Paneles de administración: Funciones y Estado del sistema ---- */
+  const FN_TXT = { estado: ['🩺 Estado del sistema', 'Panel para revisar que todo funcione.'], validar: ['🛡 Datos a prueba de idioma', 'Revisa y repara fechas y coordenadas.'], correo_carta: ['💌 Carta por correo', 'Envía el texto de la carta a las 8:00 a. m.'], hace_anio: ['🌅 Hace un año hoy', 'Recuerdo del día en Inicio.'], por_visitar: ['⭐ Lugares por visitar', 'Lista de lugares pendientes.'], metas: ['🌟 Sueños y metas', 'Lista de metas que se marcan.'], capsulas: ['📮 Cápsulas del tiempo', 'Mensajes que se abren en el futuro.'], musica: ['🎵 Música', 'Canción del día y playlist.'], retro: ['✨ Retrospectiva anual', 'Resumen del año desde el 1 de diciembre.'], album: ['📖 Álbum con historia', 'Fotos ordenadas mes a mes.'], aniv_mes: ['🎂 Aniversarios mensuales', 'Mini sorpresa cada mes.'], temas: ['🎨 Temas de temporada', 'Navidad, San Valentín y 12/12.'], barra: ['📱 Barra inferior (móvil)', 'Botones rápidos abajo.'] };
+  function funcionesPanel() {
+    const draw = () => {
+      const f = FN(), cfg = D;
+      modal('<h3>⚙️ Funciones</h3><p class="hb-small">Enciende o apaga cada novedad. El cambio se guarda al tocar.</p><div class="hb-list">' + Object.keys(FN_TXT).map((k) => '<button type="button" class="hb-item sw' + (f[k] ? ' on' : '') + '" data-k="' + k + '" role="switch" aria-checked="' + (f[k] ? 'true' : 'false') + '">' + FN_TXT[k][0] + '<small>' + FN_TXT[k][1] + ' · <b>' + (f[k] ? 'SÍ' : 'NO') + '</b></small></button>').join('') + '</div>' +
+        '<label>Tema del sitio<select class="hb-in" id="fn-tema">' + TEMAS.map((t) => '<option value="' + t[0] + '"' + ((cfg.tema || 'auto') === t[0] ? ' selected' : '') + '>' + t[1] + '</option>').join('') + '</select></label>' +
+        '<label>Correos (estilo)<select class="hb-in" id="fn-ct"><option value="oscuro"' + (cfg.correo_tema === 'claro' || cfg.correo_tema === 'auto' ? '' : ' selected') + '>Oscuro</option><option value="claro"' + (cfg.correo_tema === 'claro' ? ' selected' : '') + '>Claro</option><option value="auto"' + (cfg.correo_tema === 'auto' ? ' selected' : '') + '>Automático</option></select></label>' +
+        '<label>La carta por correo va a<select class="hb-in" id="fn-ca">' + [['ella', 'Ella'], ['yo', 'Yo'], ['ambos', 'Los dos']].map((o) => '<option value="' + o[0] + '"' + ((cfg.carta_correo_a || 'ella') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></label>' +
+        '<button class="hb-btn ghost" id="fn-pr" type="button">✉ Probar carta de hoy (a mi correo)</button><div class="err" id="fn-e"></div><button class="hb-btn" id="fn-x" type="button">Cerrar</button>');
+      $('fn-x').onclick = closeModal;
+      $('hb-modal').querySelectorAll('.sw').forEach((b) => b.addEventListener('click', async () => {
+        const k = b.dataset.k, on = !FN()[k], j = await adminPost('config_guardar', { fn: { [k]: on } });
+        if (j.ok) { D.fn = Object.assign({}, D.fn || {}, { [k]: on }); saveLocal(); buildNav(); buildTabbar(); applyLook(); funcionesPanel(); } else if (j.error !== 'cancel') $('fn-e').textContent = errTxt(j);
+      }));
+      const sel = (id, key) => { $(id).onchange = async () => { const v = $(id).value, j = await adminPost('config_guardar', { [key]: v }); if (j.ok) { D[key] = v; saveLocal(); applyLook(); toast('Guardado'); } else if (j.error !== 'cancel') $('fn-e').textContent = errTxt(j); }; };
+      sel('fn-tema', 'tema'); sel('fn-ct', 'correo_tema'); sel('fn-ca', 'carta_correo_a');
+      $('fn-pr').onclick = async () => { const j = await adminPost('carta_correo_prueba', { rol: 'yo' }); if (j.ok) toast('✉ Prueba enviada. Revisa tu bandeja.'); else if (j.error !== 'cancel') $('fn-e').textContent = j.error === 'sin-correos' ? 'Falta guardar tu correo (Admin → Correos).' : j.error === 'vacia' ? 'No hay carta escrita para hoy.' : errTxt(j); };
+    };
+    draw();
+  }
+  const NIV = { ok: ['✅', 'ok'], info: ['ℹ️', 'info'], aviso: ['⚠️', 'warn'], error: ['❌', 'bad'] };
+  async function estadoPanel() {
+    const j = await adminPost('sistema_estado', {});
+    if (!j.ok) { if (j.error !== 'cancel') toast(errTxt(j)); return; }
+    const ds = j.datos || [];
+    modal('<h3>🩺 Estado del sistema</h3><p class="hb-small">Versión del servidor: ' + esc(j.version) + ' · hoy: ' + esc(j.hoy) + '</p><div class="hb-list">' + (j.checks || []).map((c) => { const n = NIV[c.n] || NIV.info; return '<div class="hb-item st-' + n[1] + '">' + n[0] + ' ' + esc(c.t) + '<small>' + esc(c.d) + '</small></div>'; }).join('') + '</div>' +
+      (FN().validar ? '<h3 style="margin-top:.8rem">🛡 Datos</h3>' + (ds.length ? '<div class="hb-list">' + ds.slice(0, 30).map((d) => '<div class="hb-item st-' + (NIV[d.nivel] || NIV.info)[1] + '">' + (NIV[d.nivel] || NIV.info)[0] + ' ' + esc(d.hoja) + '<small>' + esc(d.detalle) + '</small></div>').join('') + '</div>' : '<p>✅ Todos los datos se ven bien.</p>') + '<button class="hb-btn" id="es-r" type="button">🔧 Reparar datos</button>' : '') +
+      '<div class="err" id="es-e"></div><div class="row"><button class="hb-btn ghost" id="es-u" type="button">Actualizar</button><button class="hb-btn ghost" id="es-x" type="button">Cerrar</button></div>');
+    $('es-x').onclick = closeModal; $('es-u').onclick = estadoPanel;
+    if ($('es-r')) $('es-r').onclick = async () => { const r = await adminPost('sistema_reparar', {}); if (r.ok) { toast('Reparado: ' + (r.reparados || 0) + ' dato(s)'); await load(); estadoPanel(); } else if (r.error !== 'cancel') $('es-e').textContent = errTxt(r); };
+  }
+  function aparienciaPanel() {
+    const p = prefs(), f = FN();
+    modal('<h3>🎨 Apariencia</h3><p class="hb-small">Se guarda solo en este dispositivo.</p>' + (f.temas ? '<label>Tema<select class="hb-in" id="ap-t"><option value="">Como lo puso el administrador</option>' + TEMAS.map((t) => '<option value="' + t[0] + '"' + (p.tema === t[0] ? ' selected' : '') + '>' + t[1] + '</option>').join('') + '</select></label>' : '') +
+      '<label>Tamaño de letra: <b id="ap-fv">' + p.fuente + '%</b><input id="ap-f" type="range" min="90" max="140" step="5" value="' + p.fuente + '"></label>' +
+      '<button type="button" class="hb-item sw' + (p.anim ? ' on' : '') + '" data-p="anim" role="switch" aria-checked="' + p.anim + '">Animaciones<small>' + (p.anim ? 'SÍ' : 'NO') + '</small></button>' +
+      '<button type="button" class="hb-item sw' + (p.vib ? ' on' : '') + '" data-p="vib" role="switch" aria-checked="' + p.vib + '">Vibración suave al tocar<small>' + (p.vib ? 'SÍ' : 'NO') + '</small></button>' +
+      '<button type="button" class="hb-item sw' + (p.alto ? ' on' : '') + '" data-p="alto" role="switch" aria-checked="' + p.alto + '">Lectura con más contraste<small>' + (p.alto ? 'SÍ' : 'NO') + '</small></button><button class="hb-btn" id="ap-ok" type="button">Listo</button>');
+    $('ap-ok').onclick = closeModal;
+    if ($('ap-t')) $('ap-t').onchange = () => setPref('tema', $('ap-t').value);
+    $('ap-f').oninput = () => { $('ap-fv').textContent = $('ap-f').value + '%'; setPref('fuente', Number($('ap-f').value)); };
+    $('hb-modal').querySelectorAll('.sw[data-p]').forEach((b) => b.addEventListener('click', () => { setPref(b.dataset.p, !prefs()[b.dataset.p]); aparienciaPanel(); }));
   }
 
   /* ---------------- Ayuda y arranque ---------------- */
@@ -982,7 +1232,8 @@
 
   function init() {
     document.body.insertAdjacentHTML('beforeend', HUB_HTML);
-    buildNav();
+    applyLook(); buildNav(); buildTabbar();
+    document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.hb-btn,.hb-tab,.hb-item,.hb-chk,.hb-ib')) buzz(8); }, true);
     const right = $('hb-close');
     if (PAGE === 'home') { right.href = 'regalo.html'; right.textContent = '🎁'; right.setAttribute('aria-label', 'Regalo y calendario'); }
     else { right.href = 'index.html'; right.textContent = '🏠'; right.setAttribute('aria-label', 'Inicio'); }
@@ -1003,7 +1254,7 @@
     let hayCache = false; try { hayCache = !!localStorage.getItem(LS); } catch (e) {}
     const introOn = PAGE === 'home' && $('intro-cal') && !$('intro-cal').classList.contains('gone');
     if (!hayCache && !introOn && window.HBusy) window.HBusy.run('Cargando nuestro rincón…', () => first);
-    first.then(() => { if (!pick && !$('hb-modal').classList.contains('on') && !$('hb-letter').classList.contains('on') && !$('hb-viewer').classList.contains('on')) rerender(); });
+    first.then(() => { applyLook(); buildNav(); if (!pick && !$('hb-modal').classList.contains('on') && !$('hb-letter').classList.contains('on') && !$('hb-viewer').classList.contains('on')) rerender(); });
     if (PAGE === 'home') {   // la ayuda de primera vez sale cuando termina la animación de entrada
       let seen = false; try { seen = localStorage.getItem('hub_visto') === '1'; } catch (e) {}
       if (!seen) {
